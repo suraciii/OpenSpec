@@ -20,6 +20,7 @@ import {
   type TaskItem,
   type ApplyInstructions,
 } from './shared.js';
+import { getTaskItemsForChange } from '../../utils/task-progress.js';
 
 // -----------------------------------------------------------------------------
 // Types
@@ -213,6 +214,7 @@ export function printInstructionsText(instructions: ArtifactInstructions, isBloc
 
 /**
  * Parses tasks.md content and extracts task items with their completion status.
+ * @deprecated Use getTaskItemsForChange from task-progress.ts instead
  */
 function parseTasksFile(content: string): TaskItem[] {
   const tasks: TaskItem[] = [];
@@ -235,6 +237,27 @@ function parseTasksFile(content: string): TaskItem[] {
   }
 
   return tasks;
+}
+
+/**
+ * Parses prd.json content and extracts task items with their completion status.
+ * @deprecated Use getTaskItemsForChange from task-progress.ts instead
+ */
+function parsePrdFile(content: string): TaskItem[] {
+  try {
+    const prd = JSON.parse(content);
+    if (!prd.tasks || !Array.isArray(prd.tasks)) {
+      return [];
+    }
+
+    return prd.tasks.map((task: any, index: number) => ({
+      id: task.id || `${index + 1}`,
+      description: task.title || task.description || '',
+      done: task.passes === true,
+    }));
+  } catch {
+    return [];
+  }
 }
 
 /**
@@ -347,8 +370,9 @@ export async function generateApplyInstructions(
     const tracksPath = path.join(changeDir, tracksFile);
     tracksFileExists = fs.existsSync(tracksPath);
     if (tracksFileExists) {
-      const tasksContent = await fs.promises.readFile(tracksPath, 'utf-8');
-      tasks = parseTasksFile(tasksContent);
+      // Use unified parser that supports both markdown and JSON formats
+      const changesDir = path.join(projectRoot, 'openspec', 'changes');
+      tasks = await getTaskItemsForChange(changesDir, changeName, tracksFile);
     }
   }
 

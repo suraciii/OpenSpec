@@ -100,6 +100,25 @@ openspec init
 
 Now tell your AI: `/opsx:propose <what-you-want-to-build>`
 
+### Ralph-Driven Workflow
+
+OpenSpec now supports the **ralph-driven** schema for autonomous agent execution with the Ralph system.
+
+To use the ralph-driven workflow:
+
+```bash
+# Initialize with ralph-driven schema
+openspec init --schema ralph-driven
+
+# Or set default schema in existing project
+openspec config set schema ralph-driven
+```
+
+The ralph-driven workflow uses `prd.json` (instead of `tasks.md`) for task tracking with:
+- Structured task metadata (acceptance criteria, priority)
+- `passes` field for completion tracking
+- Integration with Ralph autonomous execution loop
+
 If you want the expanded workflow (`/opsx:new`, `/opsx:continue`, `/opsx:ff`, `/opsx:verify`, `/opsx:sync`, `/opsx:bulk-archive`, `/opsx:onboard`), select it with `openspec config profile` and apply with `openspec update`.
 
 > [!NOTE]

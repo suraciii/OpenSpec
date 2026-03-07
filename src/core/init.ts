@@ -83,6 +83,7 @@ type InitCommandOptions = {
   force?: boolean;
   interactive?: boolean;
   profile?: string;
+  schema?: string;
 };
 
 // -----------------------------------------------------------------------------
@@ -94,12 +95,14 @@ export class InitCommand {
   private readonly force: boolean;
   private readonly interactiveOption?: boolean;
   private readonly profileOverride?: string;
+  private readonly schemaOverride?: string;
 
   constructor(options: InitCommandOptions = {}) {
     this.toolsArg = options.tools;
     this.force = options.force ?? false;
     this.interactiveOption = options.interactive;
     this.profileOverride = options.profile;
+    this.schemaOverride = options.schema;
   }
 
   async execute(targetPath: string): Promise<void> {
@@ -611,7 +614,8 @@ export class InitCommand {
     }
 
     try {
-      const yamlContent = serializeConfig({ schema: DEFAULT_SCHEMA });
+      const schemaToUse = this.schemaOverride ?? DEFAULT_SCHEMA;
+      const yamlContent = serializeConfig({ schema: schemaToUse });
       await FileSystemUtils.writeFile(configPath, yamlContent);
       return 'created';
     } catch {
@@ -684,8 +688,9 @@ export class InitCommand {
     }
 
     // Config status
+    const schemaToUse = this.schemaOverride ?? DEFAULT_SCHEMA;
     if (configStatus === 'created') {
-      console.log(`Config: openspec/config.yaml (schema: ${DEFAULT_SCHEMA})`);
+      console.log(`Config: openspec/config.yaml (schema: ${schemaToUse})`);
     } else if (configStatus === 'exists') {
       // Show actual filename (config.yaml or config.yml)
       const configYaml = path.join(projectPath, OPENSPEC_DIR_NAME, 'config.yaml');
