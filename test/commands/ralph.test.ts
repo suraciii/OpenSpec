@@ -1,45 +1,38 @@
-import { describe, it, expect, beforeEach, afterEach } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { promises as fs } from 'fs';
 import path from 'path';
 import os from 'os';
-import { runCLI } from '../helpers/run-cli.js';
-import {
-  createPrdData,
-  createCompletedPrdData,
-  createOpenPrdData,
-  createMixedPrdData,
-} from '../factories/ralph.js';
+import { setExecutor, ralphCommand, type Executor } from '../../src/commands/workflow/ralph.js';
+import { createPrdData, createCompletedPrdData, createOpenPrdData } from '../factories/ralph.js';
 
 describe('ralph command', () => {
   let tempDir: string;
   let changesDir: string;
+  let mockExecutor: Executor;
 
   beforeEach(async () => {
     tempDir = await fs.mkdtemp(path.join(os.tmpdir(), 'openspec-ralph-'));
     changesDir = path.join(tempDir, 'openspec', 'changes');
     await fs.mkdir(changesDir, { recursive: true });
 
-    process.env.RALPH_TEST_MODE = 'true';
+    mockExecutor = {
+      executeOpenCode: vi.fn(),
+    };
+    setExecutor(mockExecutor);
   });
 
   afterEach(async () => {
-    delete process.env.RALPH_TEST_MODE;
-    
+    setExecutor({
+      executeOpenCode: () => '',
+    });
     if (tempDir) {
       await fs.rm(tempDir, { recursive: true, force: true });
     }
   });
 
-  function getOutput(result: { stdout: string; stderr: string }): string {
-    return result.stdout + result.stderr;
-  }
-
   async function createRalphDrivenChange(
     changeName: string,
-    options: {
-      prdData?: ReturnType<typeof createPrdData>;
-      withTasks?: boolean;
-    } = {}
+    options: { prdData?: ReturnType<typeof createPrdData> } = {}
   ): Promise<string> {
     const changeDir = path.join(changesDir, changeName);
     await fs.mkdir(changeDir, { recursive: true });
@@ -61,30 +54,32 @@ describe('ralph command', () => {
       );
     }
 
-    if (options.withTasks) {
-      await fs.writeFile(
-        path.join(changeDir, 'tasks.md'),
-        '## Tasks\n- [ ] Task 1\n- [ ] Task 2'
-      );
-    }
-
     return changeDir;
   }
 
   describe('validation', () => {
-    it('requires --change option', async () => {
-      const result = await runCLI(['ralph'], { cwd: tempDir });
-      expect(result.exitCode).toBe(1);
-      expect(getOutput(result)).toContain('change');
+    it('throws when --change is missing', async () => {
+      const originalCwd = process.cwd;
+      process.cwd = () => tempDir;
+
+      await expect(ralphCommand({})).rejects.toThrow('No changes found');
+
+      process.cwd = originalCwd;
     });
 
-    it('fails for non-existent change', async () => {
-      const result = await runCLI(['ralph', '--change', 'non-existent'], { cwd: tempDir });
-      expect(result.exitCode).toBe(1);
-      expect(getOutput(result)).toContain('not found');
+    it('throws for non-existent change', async () => {
+      const originalCwd = process.cwd;
+      process.cwd = () => tempDir;
+
+      await expect(ralphCommand({ change: 'non-existent' })).rejects.toThrow('not found');
+
+      process.cwd = originalCwd;
     });
 
-    it('fails for spec-driven schema (not ralph-driven)', async () => {
+    it('throws for non-ralph-driven schema', async () => {
+      const originalCwd = process.cwd;
+      process.cwd = () => tempDir;
+
       const changeDir = path.join(changesDir, 'spec-change');
       await fs.mkdir(changeDir, { recursive: true });
       await fs.writeFile(
@@ -93,116 +88,96 @@ describe('ralph command', () => {
       );
       await fs.writeFile(path.join(changeDir, 'proposal.md'), '## Why\nTest');
 
-      const result = await runCLI(['ralph', '--change', 'spec-change'], { cwd: tempDir });
-      expect(result.exitCode).toBe(1);
-      expect(getOutput(result)).toContain('requires ralph-driven schema');
+      await expect(ralphCommand({ change: 'spec-change' })).rejects.toThrow('requires ralph-driven schema');
+
+      process.cwd = originalCwd;
     });
 
-    it('fails when prd.json is missing', async () => {
+    it('throws when prd.json is missing', async () => {
+      const originalCwd = process.cwd;
+      process.cwd = () => tempDir;
+
       await createRalphDrivenChange('no-prd');
 
-      const result = await runCLI(['ralph', '--change', 'no-prd'], { cwd: tempDir });
-      expect(result.exitCode).toBe(1);
-      expect(getOutput(result)).toContain('prd.json not found');
-    });
+      await expect(ralphCommand({ change: 'no-prd' })).rejects.toThrow('prd.json not found');
 
-    it('fails when prd.json has no tasks', async () => {
-      await createRalphDrivenChange('empty-prd', {
-        prdData: createPrdData({ tasks: [] }),
-      });
-
-      const result = await runCLI(['ralph', '--change', 'empty-prd'], { cwd: tempDir });
-      expect(result.exitCode).toBe(1);
-      expect(getOutput(result)).toContain('contains no tasks');
+      process.cwd = originalCwd;
     });
   });
 
-  describe('completion detection', () => {
-    it('recognizes all tasks complete', async () => {
-      await createRalphDrivenChange('complete-test', {
-        prdData: createCompletedPrdData(2),
-      });
+  describe('loop controller', () => {
+    it('detects completion signal and exits successfully', async () => {
+      const originalCwd = process.cwd;
+      process.cwd = () => tempDir;
 
-      const result = await runCLI(['ralph', '--change', 'complete-test', '--json'], { cwd: tempDir });
-      expect(result.exitCode).toBe(0);
-      
-      const output = getOutput(result);
-      expect(output).toContain('All tasks already complete');
-    });
-
-    it('recognizes mixed completion status', async () => {
-      await createRalphDrivenChange('mixed-test', {
-        prdData: createMixedPrdData(1, 1),
-      });
-
-      const result = await runCLI(['ralph', '--change', 'mixed-test', '--max-iterations', '1'], { cwd: tempDir });
-      expect(result.exitCode).toBe(0);
-    });
-  });
-
-  describe('AI tool execution', () => {
-    it('executes AI tool for incomplete tasks', async () => {
       await createRalphDrivenChange('exec-test', {
         prdData: createOpenPrdData(1),
       });
 
-      const result = await runCLI(['ralph', '--change', 'exec-test', '--max-iterations', '1'], { cwd: tempDir });
-      
-      expect(result.exitCode).toBe(0);
+      mockExecutor.executeOpenCode = vi.fn().mockReturnValue('<promise>COMPLETE</promise>');
+
+      await ralphCommand({ change: 'exec-test', maxIterations: 10 });
+
+      process.cwd = originalCwd;
     });
 
-    it('handles task completion', async () => {
-      await createRalphDrivenChange('complete-task-test', {
+    it('reaches max iterations when no completion signal', async () => {
+      const originalCwd = process.cwd;
+      process.cwd = () => tempDir;
+
+      await createRalphDrivenChange('no-complete-test', {
         prdData: createOpenPrdData(1),
       });
 
-      const result = await runCLI(['ralph', '--change', 'complete-task-test', '--max-iterations', '1'], { cwd: tempDir });
-      
-      expect(result.exitCode).toBe(0);
+      // Mock returns empty string (no completion signal)
+      mockExecutor.executeOpenCode = vi.fn().mockReturnValue('');
+
+      await ralphCommand({ change: 'no-complete-test', maxIterations: 1 });
+      expect(process.exitCode).toBe(1);
+
+      process.cwd = originalCwd;
     });
   });
 
-  describe('options', () => {
-    it('accepts --max-iterations option', async () => {
-      await createRalphDrivenChange('max-iter-test', {
+  describe('progress archiving', () => {
+    it('archives existing progress.txt on new run', async () => {
+      const originalCwd = process.cwd;
+      process.cwd = () => tempDir;
+
+      const changeDir = await createRalphDrivenChange('archive-test', {
         prdData: createCompletedPrdData(1),
       });
+      const progressPath = path.join(changeDir, 'progress.txt');
+      await fs.writeFile(progressPath, '# Ralph Progress Log\n\nSome previous content here that is long enough to trigger archiving\n\n---\n');
 
-      const result = await runCLI(
-        ['ralph', '--change', 'max-iter-test', '--max-iterations', '5'],
-        { cwd: tempDir }
-      );
-      
-      expect(getOutput(result)).not.toContain('unknown option');
-      expect(result.exitCode).toBe(0);
+      mockExecutor.executeOpenCode = vi.fn().mockReturnValue('');
+
+      await ralphCommand({ change: 'archive-test', maxIterations: 1 });
+
+      const archiveDirs = await fs.readdir(path.join(changeDir, 'archive'));
+      expect(archiveDirs.length).toBe(1);
+
+      process.cwd = originalCwd;
     });
 
-    it('accepts --tool option', async () => {
-      await createRalphDrivenChange('tool-test', {
+    it('initializes progress.txt if not exists', async () => {
+      const originalCwd = process.cwd;
+      process.cwd = () => tempDir;
+
+      const changeDir = await createRalphDrivenChange('init-test', {
         prdData: createCompletedPrdData(1),
       });
 
-      const result = await runCLI(
-        ['ralph', '--change', 'tool-test', '--tool', 'opencode'],
-        { cwd: tempDir }
-      );
-      
-      expect(getOutput(result)).not.toContain('unknown option');
-      expect(result.exitCode).toBe(0);
-    });
+      mockExecutor.executeOpenCode = vi.fn().mockReturnValue('');
 
-    it('accepts --json option', async () => {
-      await createRalphDrivenChange('json-test', {
-        prdData: createCompletedPrdData(1),
-      });
+      await ralphCommand({ change: 'init-test', maxIterations: 1 });
 
-      const result = await runCLI(
-        ['ralph', '--change', 'json-test', '--json'],
-        { cwd: tempDir }
-      );
-      
-      expect(getOutput(result)).not.toContain('unknown option');
-      expect(result.exitCode).toBe(0);
+      const progressPath = path.join(changeDir, 'progress.txt');
+      const content = await fs.readFile(progressPath, 'utf-8');
+      expect(content).toContain('# Ralph Progress Log');
+
+      process.cwd = originalCwd;
     });
   });
 });
+

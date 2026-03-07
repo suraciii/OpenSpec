@@ -1,4 +1,19 @@
-import type { PrdTask, PrdData } from '../../src/types/prd.js';
+export interface PrdTask {
+  id: string;
+  title: string;
+  priority?: number;
+  passes: boolean;
+  description?: string;
+  acceptanceCriteria?: string[];
+  dependsOn?: string[];
+  notes?: string;
+}
+
+export interface PrdData {
+  project: string;
+  description: string;
+  tasks: PrdTask[];
+}
 
 export const DEFAULT_PRD_TASK: PrdTask = {
   id: 'T-001',

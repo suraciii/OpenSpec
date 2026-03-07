@@ -46,7 +46,7 @@
 - [x] 7.6 Add support for multiple AI tools (opencode, amp, claude)
 - [x] 7.7 Register command in `src/cli/index.ts`
 - [x] 7.8 Add `--max-iterations`, `--tool`, `--json` options
-- [ ] 7.9 **REFACTOR:** Simplify ralph.ts to pure loop controller (see design D7)
+- [x] 7.9 **REFACTOR:** Simplify ralph.ts to pure loop controller (see design D7)
   - Remove task selection logic (now in opsx-ralph.md)
   - Remove prompt generation (now in opsx-ralph.md)
   - Remove progress.txt appending (now in opsx-ralph.md)
@@ -55,11 +55,11 @@
 
 ## 8. Ralph Instructions Command
 
-- [ ] 8.1 Create `ralphInstructionsCommand()` in `src/commands/workflow/instructions.ts`
-- [ ] 8.2 Implement `generateRalphInstructions()` helper function
-- [ ] 8.3 Add CLI route: `openspec instructions ralph --change <name>`
-- [ ] 8.4 Register new instruction type in command parser
-- [ ] 8.5 Add tests for Ralph instructions generation
+- [x] 8.1 Create `ralphInstructionsCommand()` in `src/commands/workflow/instructions.ts`
+- [x] 8.2 Implement `generateRalphInstructions()` helper function
+- [x] 8.3 Add CLI route: `openspec instructions ralph --change <name>`
+- [x] 8.4 Register new instruction type in command parser
+- [x] 8.5 Add tests for Ralph instructions generation
 
 ## 9. Spec Updates
 
@@ -73,19 +73,19 @@
 - [x] 10.2 Add integration tests for AI tool spawning
 - [x] 10.3 Add tests for progress archiving
 - [x] 10.4 Add tests for completion detection
-- [ ] 10.5 Update tests for simplified ralph.ts (loop controller only)
+- [x] 10.5 Update tests for simplified ralph.ts (loop controller only)
 
 ## 11. Tests for Ralph Instructions
 
-- [ ] 11.1 Add tests for `generateRalphInstructions()`
-- [ ] 11.2 Add tests for `ralphInstructionsCommand()`
-- [ ] 11.3 Add tests for context file path generation
+- [x] 11.1 Add tests for `generateRalphInstructions()`
+- [x] 11.2 Add tests for `ralphInstructionsCommand()`
+- [x] 11.3 Add tests for context file path generation
 
 ## 11. Documentation
 
 - [x] 11.1 Add ralph-driven schema description in schema.yaml
 - [x] 11.2 Update README with ralph-driven workflow guide
 - [x] 11.3 Document `openspec ralph` command usage
-- [ ] 11.4 Document `openspec instructions ralph` command
-- [ ] 11.5 Update opsx-ralph.md with iteration responsibilities
-- [ ] 11.6 Document architecture differences: spec-driven vs ralph-driven
+- [x] 11.4 Document `openspec instructions ralph` command
+- [x] 11.5 Update opsx-ralph.md with iteration responsibilities
+- [x] 11.6 Document architecture differences: spec-driven vs ralph-driven

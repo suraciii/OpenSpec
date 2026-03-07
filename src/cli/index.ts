@@ -20,6 +20,7 @@ import {
   statusCommand,
   instructionsCommand,
   applyInstructionsCommand,
+  ralphInstructionsCommand,
   templatesCommand,
   schemasCommand,
   newChangeCommand,
@@ -448,9 +449,10 @@ program
   .option('--json', 'Output as JSON')
   .action(async (artifactId: string | undefined, options: InstructionsOptions) => {
     try {
-      // Special case: "apply" is not an artifact, but a command to get apply instructions
       if (artifactId === 'apply') {
         await applyInstructionsCommand(options);
+      } else if (artifactId === 'ralph') {
+        await ralphInstructionsCommand(options as any);
       } else {
         await instructionsCommand(artifactId, options);
       }
@@ -516,8 +518,6 @@ program
   .description('Autonomous task execution for ralph-driven workflow')
   .option('--change <name>', 'Change name to execute')
   .option('--max-iterations <n>', 'Maximum number of iterations (default: 10)')
-  .option('--tool <tool>', 'AI tool to use (opencode, amp, claude) (default: opencode)')
-  .option('--json', 'Output as JSON (for programmatic use)')
   .action(async (options: RalphOptions) => {
     try {
       await ralphCommand(options);

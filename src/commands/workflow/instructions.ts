@@ -38,6 +38,33 @@ export interface ApplyInstructionsOptions {
   json?: boolean;
 }
 
+export interface RalphInstructionsOptions {
+  change?: string;
+  json?: boolean;
+}
+
+export interface RalphTask {
+  id: string;
+  title: string;
+  description: string;
+  acceptanceCriteria: string[];
+  priority: number;
+  done: boolean;
+}
+
+export interface RalphInstructions {
+  changeName: string;
+  schemaName: string;
+  contextFiles: Record<string, string>;
+  tasks: RalphTask[];
+  progress: {
+    total: number;
+    completed: number;
+    remaining: number;
+  };
+  instruction: string;
+}
+
 // -----------------------------------------------------------------------------
 // Artifact Instructions Command
 // -----------------------------------------------------------------------------
@@ -206,58 +233,6 @@ export function printInstructionsText(instructions: ArtifactInstructions, isBloc
 
   // Closing tag
   console.log('</artifact>');
-}
-
-// -----------------------------------------------------------------------------
-// Apply Instructions Command
-// -----------------------------------------------------------------------------
-
-/**
- * Parses tasks.md content and extracts task items with their completion status.
- * @deprecated Use getTaskItemsForChange from task-progress.ts instead
- */
-function parseTasksFile(content: string): TaskItem[] {
-  const tasks: TaskItem[] = [];
-  const lines = content.split('\n');
-  let taskIndex = 0;
-
-  for (const line of lines) {
-    // Match checkbox patterns: - [ ] or - [x] or - [X]
-    const checkboxMatch = line.match(/^[-*]\s*\[([ xX])\]\s*(.+)\s*$/);
-    if (checkboxMatch) {
-      taskIndex++;
-      const done = checkboxMatch[1].toLowerCase() === 'x';
-      const description = checkboxMatch[2].trim();
-      tasks.push({
-        id: `${taskIndex}`,
-        description,
-        done,
-      });
-    }
-  }
-
-  return tasks;
-}
-
-/**
- * Parses prd.json content and extracts task items with their completion status.
- * @deprecated Use getTaskItemsForChange from task-progress.ts instead
- */
-function parsePrdFile(content: string): TaskItem[] {
-  try {
-    const prd = JSON.parse(content);
-    if (!prd.tasks || !Array.isArray(prd.tasks)) {
-      return [];
-    }
-
-    return prd.tasks.map((task: any, index: number) => ({
-      id: task.id || `${index + 1}`,
-      description: task.title || task.description || '',
-      done: task.passes === true,
-    }));
-  } catch {
-    return [];
-  }
 }
 
 /**
@@ -500,6 +475,145 @@ export function printApplyInstructionsText(instructions: ApplyInstructions): voi
   }
 
   // Instruction
+  console.log('### Instruction');
+  console.log(instruction);
+}
+
+// -----------------------------------------------------------------------------
+// Ralph Instructions Command
+// -----------------------------------------------------------------------------
+
+function parsePrdForRalph(content: string): RalphTask[] {
+  try {
+    const prd = JSON.parse(content);
+    if (!prd.tasks || !Array.isArray(prd.tasks)) {
+      return [];
+    }
+
+    return prd.tasks.map((task: any) => ({
+      id: task.id || '',
+      title: task.title || '',
+      description: task.description || '',
+      acceptanceCriteria: task.acceptanceCriteria || [],
+      priority: task.priority ?? 999,
+      done: task.passes === true,
+    }));
+  } catch {
+    return [];
+  }
+}
+
+export async function generateRalphInstructions(
+  projectRoot: string,
+  changeName: string
+): Promise<RalphInstructions> {
+  const context = loadChangeContext(projectRoot, changeName);
+
+  if (context.schemaName !== 'ralph-driven') {
+    throw new Error(
+      `Change uses ${context.schemaName} schema. Ralph instructions are only available for ralph-driven schema.`
+    );
+  }
+
+  const changeDir = path.join(projectRoot, 'openspec', 'changes', changeName);
+  const prdPath = path.join(changeDir, 'prd.json');
+
+  if (!fs.existsSync(prdPath)) {
+    throw new Error(`prd.json not found at ${prdPath}. Generate it first via /opsx-propose.`);
+  }
+
+  const prdContent = fs.readFileSync(prdPath, 'utf-8');
+  const tasks = parsePrdForRalph(prdContent);
+
+  const schema = resolveSchema(context.schemaName, projectRoot);
+
+  const contextFiles: Record<string, string> = {};
+  for (const artifact of schema.artifacts) {
+    const generatesPath = artifact.generates.split('/').join(path.sep);
+    const fullPath = path.join(changeDir, generatesPath);
+    if (fs.existsSync(fullPath)) {
+      contextFiles[artifact.id] = fullPath;
+    }
+  }
+
+  const total = tasks.length;
+  const completed = tasks.filter((t) => t.done).length;
+  const remaining = total - completed;
+
+  const instruction = `1. Read all context files listed in contextFiles
+2. Read prd.json to find the highest priority pending task (lowest priority number with done: false)
+3. Implement that single task
+4. Update prd.json: set passes: true for the completed task
+5. Append progress to progress.txt with timestamp and learnings
+6. If all tasks are now complete, output: <promise>COMPLETE</promise>`;
+
+  return {
+    changeName,
+    schemaName: context.schemaName,
+    contextFiles,
+    tasks,
+    progress: { total, completed, remaining },
+    instruction,
+  };
+}
+
+export async function ralphInstructionsCommand(options: RalphInstructionsOptions): Promise<void> {
+  const spinner = ora('Generating Ralph instructions...').start();
+
+  try {
+    const projectRoot = process.cwd();
+    const changeName = await validateChangeExists(options.change, projectRoot);
+
+    const instructions = await generateRalphInstructions(projectRoot, changeName);
+
+    spinner.stop();
+
+    if (options.json) {
+      console.log(JSON.stringify(instructions, null, 2));
+      return;
+    }
+
+    printRalphInstructionsText(instructions);
+  } catch (error) {
+    spinner.stop();
+    throw error;
+  }
+}
+
+export function printRalphInstructionsText(instructions: RalphInstructions): void {
+  const { changeName, schemaName, contextFiles, tasks, progress, instruction } = instructions;
+
+  console.log(`## Ralph: ${changeName}`);
+  console.log(`Schema: ${schemaName}`);
+  console.log();
+
+  const contextFileEntries = Object.entries(contextFiles);
+  if (contextFileEntries.length > 0) {
+    console.log('### Context Files');
+    for (const [artifactId, filePath] of contextFileEntries) {
+      console.log(`- ${artifactId}: ${filePath}`);
+    }
+    console.log();
+  }
+
+  console.log('### Progress');
+  if (progress.remaining === 0) {
+    console.log(`${progress.completed}/${progress.total} complete ✓`);
+  } else {
+    console.log(`${progress.completed}/${progress.total} complete`);
+  }
+  console.log();
+
+  if (tasks.length > 0) {
+    console.log('### Tasks');
+    const sortedTasks = [...tasks].sort((a, b) => a.priority - b.priority);
+    for (const task of sortedTasks) {
+      const status = task.done ? '[x]' : '[ ]';
+      console.log(`- ${status} ${task.id}: ${task.title} (priority: ${task.priority})`);
+    }
+    console.log();
+  }
+
   console.log('### Instruction');
   console.log(instruction);
 }
