@@ -1,12 +1,14 @@
 ## Context
 
-OpenSpec currently uses a single schema (`spec-driven`) that generates `tasks.md` with markdown checkboxes for progress tracking. The Ralph autonomous agent system, already integrated via `.opencode/command/opsx-ralph.md`, expects `prd.json` format with richer task metadata.
+OpenSpec currently uses a single schema (`spec-driven`) that generates `tasks.md` with markdown checkboxes for progress tracking. Users want an autonomous agent workflow that executes tasks iteratively using a structured JSON format (`prd.json`) with richer metadata (acceptance criteria, priority, pass/fail status).
 
 Current architecture:
 - `schemas/spec-driven/` - single schema with `tasks.md` tracking
 - `src/utils/task-progress.ts` - hardcodes `tasks.md` path
 - `src/commands/change.ts` - duplicate task counting logic
 - `src/commands/workflow/instructions.ts` - uses `schema.apply.tracks` for flexibility
+
+This change introduces `ralph-driven` schema and the `openspec ralph` CLI command to enable autonomous task execution without external scripts.
 
 ## Goals / Non-Goals
 
@@ -18,9 +20,10 @@ Current architecture:
 
 **Non-Goals:**
 - Migrating existing changes from tasks.md to prd.json
-- Modifying Ralph agent implementation (assumes existing opsx-ralph.md is correct)
 - Creating bidirectional sync between formats
 - Changing the propose workflow UI/UX
+- Providing built-in AI agent (ralph command spawns external tools)
+- Supporting non-ralph-driven schemas with ralph command
 
 ## Decisions
 
@@ -182,6 +185,96 @@ $ openspec new change my-feature  # Uses ralph-driven
 - Reduces repetition in `openspec new change` commands
 - Backward compatible (defaults to spec-driven if not set)
 
+### D7: Ralph CLI Command
+
+**Decision:** Implement `openspec ralph` as a native CLI command for autonomous task execution.
+
+**User Workflow:**
+```
+1. openspec init --schema ralph-driven
+2. /opsx-propose                    # AI skill creates proposal, specs, design, prd.json
+3. openspec ralph --change <name>   # CLI executes tasks iteratively
+```
+
+**Command Design:**
+```bash
+openspec ralph --change <name> [options]
+
+Options:
+  --change <name>         Change name (required)
+  --max-iterations <n>    Maximum iterations (default: 10)
+```
+
+**Built-in Prompt:**
+The command includes built-in prompt based on `.opencode/command/opsx-ralph.md` format:
+- Reads OpenSpec context (proposal, specs, design)
+- Reads prd.json and progress.txt
+- Implements single user story per iteration
+- Updates progress.txt and AGENTS.md
+- Outputs `<promise>COMPLETE</promise>` when done
+
+**Implementation Details:**
+
+1. **Pre-execution Checks:**
+   - Validate change directory exists
+   - Validate prd.json exists (required for ralph-driven)
+   - Read current progress from prd.json
+
+2. **Progress Archiving:**
+   - Progress log stored at `openspec/changes/<name>/progress.txt`
+   - On new run, if progress.txt has content, archive to `openspec/changes/<name>/archive/<timestamp>/progress.txt`
+   - Archive includes: timestamp, previous progress content
+   - Reset progress.txt with new run header
+
+3. **Iteration Loop:**
+   ```typescript
+   for (i = 1; i <= maxIterations; i++) {
+     // Find highest priority task with passes: false
+     const nextTask = getNextPendingTask(prdJson);
+     
+     // Spawn AI tool with task context
+     const result = await spawnAITool(tool, {
+       changeName,
+       task: nextTask,
+       contextFiles: [proposal, specs, design, prd.json]
+     });
+     
+     // Check for completion signal
+     if (result.output.includes('<promise>COMPLETE</promise>')) {
+       logCompletion();
+       break;
+     }
+     
+     // Append iteration result to progress.txt
+     appendToProgressLog(result);
+   }
+   ```
+
+4. **AI Tool Integration:**
+   - **Primary**: OpenCode via `opencode run --command opsx-ralph -- <change-name>`
+   - Future support: Additional tools (amp, claude) can be added later
+   - Built-in prompt: Based on `.opencode/command/opsx-ralph.md` format
+
+5. **Completion Detection:**
+   - AI sets `passes: true` for completed task in prd.json
+   - AI appends progress to progress.txt
+   - When all tasks complete, AI outputs `<promise>COMPLETE</promise>`
+   - CLI detects this signal and terminates successfully
+
+6. **Error Handling:**
+   - Fatal errors (tool not found, permission denied): immediate exit with code 1
+   - Recoverable errors: log warning, continue to next iteration
+   - Partial completion: show completed vs remaining tasks on exit
+
+**Rationale:**
+- Native CLI integration: consistent with other OpenSpec commands
+- No external dependencies: doesn't rely on opsx-ralph.ps1 or opsx-ralph.md
+- Progress persistence: archive mechanism preserves history across runs
+- Flexible AI tool support: works with any AI tool that can accept stdin/prompts
+- Clear contract: AI knows exactly what to do via prd.json structure
+
+**Note:** This command is specifically for ralph-driven schema. For spec-driven changes, users continue using interactive `/opsx-continue-change` workflow.
+
 ## Risks / Trade-offs
 
 | Risk | Mitigation |
@@ -189,7 +282,9 @@ $ openspec new change my-feature  # Uses ralph-driven
 | Users confused by two schemas | Clear naming, documentation in schema descriptions |
 | Duplicate template maintenance | Consider template inheritance in future |
 | Format detection ambiguity | Prioritize schema-specified file over probe |
-| prd.json drift from Ralph spec | Keep structure minimal, match opsx-ralph.md expectations |
+| prd.json structure drift | Document schema in code, validate on read |
+| AI tool compatibility | Support standard stdin/pipe interface |
+| Progress archive bloat | Store in change-specific archive/, not global |
 
 ## Migration Plan
 
@@ -203,22 +298,53 @@ $ openspec new change my-feature  # Uses ralph-driven
    - Update `openspec init` with `--schema` flag
    - Update `openspec new change` to use config default
 
-3. **Phase 3:** Workflow template updates
-   - Update propose template to mention prd.json for ralph-driven
-   - Update continue-change skill for prd artifact creation
+3. **Phase 3:** Ralph CLI command
+   - Implement `openspec ralph --change <name>` command
+   - Support multiple AI tools (opencode, amp, claude)
+   - Progress archiving to change-specific archive/
+   - Completion detection via `<promise>COMPLETE</promise>`
+
+4. **Phase 4:** Documentation
+   - Update README with ralph-driven workflow
+   - Document ralph command usage and options
+   - Add examples for common workflows
 
 **No migration needed for existing changes** - they continue using spec-driven.
 
 **For migrating existing changes to Ralph:**
-- Use existing `/opsx-prd <change>` command to convert tasks.md → prd.json
+- Convert tasks.md → prd.json manually or via script
 - Or keep using spec-driven for existing changes, use ralph-driven for new changes
+
+**User Workflow (ralph-driven):**
+```bash
+# 1. Initialize with ralph-driven schema
+openspec init --schema ralph-driven
+
+# 2. Create proposal (AI creates all artifacts including prd.json)
+/opsx-propose
+
+# 3. Execute tasks autonomously
+openspec ralph --change my-feature
+
+# 4. Archive when complete
+openspec archive my-feature
+```
 
 ## Open Questions
 
-1. Should `openspec instructions apply` return task metadata (priority, criteria) for ralph-driven?
-   - Current: returns basic task list
-   - Option: extend TaskItem interface with optional fields
+1. ~~Should `openspec instructions apply` return task metadata (priority, criteria) for ralph-driven?~~
+   - **Resolved:** `openspec ralph` command handles task execution natively, AI reads prd.json directly
 
-2. Should we validate prd.json structure on generation?
+2. Should we validate prd.json structure on read?
    - Zod schema for prd.json structure?
-   - Or rely on template + instruction?
+   - Or rely on JSON.parse and graceful degradation?
+
+3. ~~Should ralph command support `--dry-run` mode?~~
+   - **Decision**: Not in initial implementation. Can be added later if needed.
+
+4. ~~How to handle AI tool installation detection?~~
+   - **Resolved**: Check OpenCode in PATH, provide clear error message if missing.
+   - Future tools will follow same pattern when supported.
+
+5. ~~Should we support multiple AI tools initially?~~
+   - **Decision**: Start with OpenCode only. Add amp/claude support in future iterations based on user demand.
