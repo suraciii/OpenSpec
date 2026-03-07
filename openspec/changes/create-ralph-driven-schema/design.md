@@ -187,7 +187,7 @@ $ openspec new change my-feature  # Uses ralph-driven
 
 ### D7: Ralph CLI Command
 
-**Decision:** Implement `openspec ralph` as a native CLI command for autonomous task execution.
+**Decision:** Implement `openspec ralph` as a pure loop controller that delegates all task logic to the AI tool.
 
 **User Workflow:**
 ```
@@ -205,75 +205,134 @@ Options:
   --max-iterations <n>    Maximum iterations (default: 10)
 ```
 
-**Built-in Prompt:**
-The command includes built-in prompt based on `.opencode/command/opsx-ralph.md` format:
-- Reads OpenSpec context (proposal, specs, design)
-- Reads prd.json and progress.txt
-- Implements single user story per iteration
-- Updates progress.txt and AGENTS.md
-- Outputs `<promise>COMPLETE</promise>` when done
+**CLI Responsibilities (Minimal):**
 
-**Implementation Details:**
+The CLI is a **dumb loop controller** that does NOT:
+- ❌ Read or parse prd.json
+- ❌ Select which task to execute
+- ❌ Generate prompts
+- ❌ Update progress files
 
-1. **Pre-execution Checks:**
-   - Validate change directory exists
-   - Validate prd.json exists (required for ralph-driven)
-   - Read current progress from prd.json
+The CLI ONLY:
+1. **Validate Environment:**
+   - Verify change directory exists
+   - Verify prd.json exists
 
-2. **Progress Archiving:**
-   - Progress log stored at `openspec/changes/<name>/progress.txt`
-   - On new run, if progress.txt has content, archive to `openspec/changes/<name>/archive/<timestamp>/progress.txt`
-   - Archive includes: timestamp, previous progress content
-   - Reset progress.txt with new run header
+2. **Archive Previous Progress (optional):**
+   - If progress.txt has content, move to `archive/<timestamp>/`
 
-3. **Iteration Loop:**
+3. **Loop Until Done:**
    ```typescript
    for (i = 1; i <= maxIterations; i++) {
-     // Find highest priority task with passes: false
-     const nextTask = getNextPendingTask(prdJson);
-     
-     // Spawn AI tool with task context
-     const result = await spawnAITool(tool, {
-       changeName,
-       task: nextTask,
-       contextFiles: [proposal, specs, design, prd.json]
-     });
+     // Spawn AI tool with minimal context
+     const result = await spawn('opencode', [
+       'run', '--command', 'opsx-ralph', '--', changeName
+     ], { cwd: projectRoot });
      
      // Check for completion signal
-     if (result.output.includes('<promise>COMPLETE</promise>')) {
-       logCompletion();
+     if (result.includes('<promise>COMPLETE</promise>')) {
+       console.log('All tasks complete!');
        break;
      }
-     
-     // Append iteration result to progress.txt
-     appendToProgressLog(result);
    }
    ```
 
-4. **AI Tool Integration:**
-   - **Primary**: OpenCode via `opencode run --command opsx-ralph -- <change-name>`
-   - Future support: Additional tools (amp, claude) can be added later
-   - Built-in prompt: Based on `.opencode/command/opsx-ralph.md` format
-
-5. **Completion Detection:**
-   - AI sets `passes: true` for completed task in prd.json
-   - AI appends progress to progress.txt
-   - When all tasks complete, AI outputs `<promise>COMPLETE</promise>`
-   - CLI detects this signal and terminates successfully
-
-6. **Error Handling:**
-   - Fatal errors (tool not found, permission denied): immediate exit with code 1
-   - Recoverable errors: log warning, continue to next iteration
-   - Partial completion: show completed vs remaining tasks on exit
+4. **Error Handling:**
+   - Tool not found: exit with code 1
+   - Non-zero exit: log and continue to next iteration
+   - Max iterations reached: exit with code 1
 
 **Rationale:**
-- Native CLI integration: consistent with other OpenSpec commands
-- No external dependencies: doesn't rely on opsx-ralph.ps1 or opsx-ralph.md
-- Progress persistence: archive mechanism preserves history across runs
-- Flexible AI tool support: works with any AI tool that can accept stdin/prompts
-- Clear contract: AI knows exactly what to do via prd.json structure
+- **Separation of Concerns:** CLI knows nothing about task logic; AI tool handles everything
+- **Schema Agnostic:** If task format changes, only update the AI tool (opsx-ralph.md)
+- **Testable:** CLI is simple; complex logic lives in declarative command file
+- **Consistent:** Works like opsx-ralph.ps1 but as native CLI
 
 **Note:** This command is specifically for ralph-driven schema. For spec-driven changes, users continue using interactive `/opsx-continue-change` workflow.
+
+---
+
+### D8: Ralph Instructions Command
+
+**Decision:** Create dedicated `openspec instructions ralph` command for Ralph-specific instruction generation.
+
+**Why Separate from `apply`:**
+- `apply` is designed for interactive spec-driven workflow (human in loop)
+- `ralph` is designed for autonomous iterative execution (AI-driven)
+- Different needs: apply needs task lists; ralph needs full context + task metadata
+
+**Command Design:**
+```bash
+openspec instructions ralph --change <name> [--json]
+```
+
+**Output (JSON):**
+```json
+{
+  "changeName": "my-feature",
+  "schemaName": "ralph-driven",
+  "contextFiles": {
+    "proposal": "/path/to/proposal.md",
+    "specs": "/path/to/specs/",
+    "design": "/path/to/design.md",
+    "prd": "/path/to/prd.json"
+  },
+  "tasks": [
+    {
+      "id": "T-001",
+      "title": "...",
+      "description": "...",
+      "acceptanceCriteria": [...],
+      "priority": 1,
+      "done": false
+    }
+  ],
+  "progress": {
+    "total": 5,
+    "completed": 2,
+    "remaining": 3
+  },
+  "instruction": "Read context files, select highest priority pending task, implement it, update prd.json, append progress.txt. Output <promise>COMPLETE> when all tasks done."
+}
+```
+
+**Rationale:**
+- Provides schema-agnostic way for AI tool to get full context
+- Returns file paths (not content) - AI reads files directly for full context
+- Includes task metadata (priority, criteria) not available in spec-driven apply
+
+---
+
+### D9: opsx-ralph Command File
+
+**Decision:** Create `.opencode/command/opsx-ralph.md` as the single source of truth for Ralph iteration logic.
+
+**Responsibilities:**
+1. Call `openspec instructions ralph --change $1 --json`
+2. Read all context files (proposal, specs, design, prd.json)
+3. Read progress.txt for Codebase Patterns
+4. Select highest priority pending task
+5. Implement the task
+6. Update prd.json (set passes: true)
+7. Append to progress.txt
+8. Check if all tasks complete:
+   - If yes: output `<promise>COMPLETE</promise>`
+   - If no: normal exit
+
+**Key Design Points:**
+- **Self-contained:** Each iteration is independent; no state passed between iterations
+- **Deterministic:** Always picks highest priority pending task from fresh prd.json read
+- **Atomic:** Each call completes exactly one task (or signals completion)
+
+**Comparison with spec-driven:**
+
+| Aspect | spec-driven (`/opsx:apply`) | ralph-driven (`/opsx:ralph`) |
+|--------|----------------------------|------------------------------|
+| Execution mode | Interactive, continuous | Iterative, single task per call |
+| Completion signal | None (returns when done) | `<promise>COMPLETE</promise>` |
+| Task selection | AI decides in real-time | Highest priority from prd.json |
+| Progress file | tasks.md | prd.json + progress.txt |
+| Invocation | Single long session | Multiple short iterations |
 
 ## Risks / Trade-offs
 
@@ -333,7 +392,7 @@ openspec archive my-feature
 ## Open Questions
 
 1. ~~Should `openspec instructions apply` return task metadata (priority, criteria) for ralph-driven?~~
-   - **Resolved:** `openspec ralph` command handles task execution natively, AI reads prd.json directly
+   - **Resolved:** Create separate `openspec instructions ralph` command (see D8)
 
 2. Should we validate prd.json structure on read?
    - Zod schema for prd.json structure?
