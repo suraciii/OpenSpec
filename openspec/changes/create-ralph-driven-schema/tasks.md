@@ -38,24 +38,24 @@
 
 ## 7. Ralph CLI Command
 
-- [ ] 7.1 Create `src/commands/workflow/ralph.ts` with command implementation
-- [ ] 7.2 Implement prd.json validation and task loading
-- [ ] 7.3 Implement progress.txt archiving to `openspec/changes/<name>/archive/<timestamp>/`
-- [ ] 7.4 Implement iteration loop with AI tool spawning
-- [ ] 7.5 Implement completion detection via `<promise>COMPLETE</promise>`
-- [ ] 7.6 Add support for multiple AI tools (opencode, amp, claude)
-- [ ] 7.7 Register command in `src/cli/index.ts`
-- [ ] 7.8 Add `--max-iterations`, `--tool`, `--json` options
+- [x] 7.1 Create `src/commands/workflow/ralph.ts` with command implementation
+- [x] 7.2 Implement prd.json validation and task loading
+- [x] 7.3 Implement progress.txt archiving to `openspec/changes/<name>/archive/<timestamp>/`
+- [x] 7.4 Implement iteration loop with AI tool spawning
+- [x] 7.5 Implement completion detection via `<promise>COMPLETE</promise>`
+- [x] 7.6 Add support for multiple AI tools (opencode, amp, claude)
+- [x] 7.7 Register command in `src/cli/index.ts`
+- [x] 7.8 Add `--max-iterations`, `--tool`, `--json` options
 
 ## 8. Tests for Ralph Command
 
-- [ ] 8.1 Add unit tests for Ralph command core logic
-- [ ] 8.2 Add integration tests for AI tool spawning
-- [ ] 8.3 Add tests for progress archiving
-- [ ] 8.4 Add tests for completion detection
+- [x] 8.1 Add unit tests for Ralph command core logic
+- [x] 8.2 Add integration tests for AI tool spawning
+- [x] 8.3 Add tests for progress archiving
+- [x] 8.4 Add tests for completion detection
 
 ## 9. Documentation
 
 - [x] 9.1 Add ralph-driven schema description in schema.yaml
 - [x] 9.2 Update README with ralph-driven workflow guide
-- [ ] 9.3 Document `openspec ralph` command usage
+- [x] 9.3 Document `openspec ralph` command usage

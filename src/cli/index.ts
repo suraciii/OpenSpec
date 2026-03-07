@@ -30,6 +30,7 @@ import {
   type SchemasOptions,
   type NewChangeOptions,
 } from '../commands/workflow/index.js';
+import { ralphCommand, type RalphOptions } from '../commands/workflow/ralph.js';
 import { maybeShowTelemetryNotice, trackCommand, shutdown } from '../telemetry/index.js';
 
 const program = new Command();
@@ -502,6 +503,24 @@ newCmd
   .action(async (name: string, options: NewChangeOptions) => {
     try {
       await newChangeCommand(name, options);
+    } catch (error) {
+      console.log();
+      ora().fail(`Error: ${(error as Error).message}`);
+      process.exit(1);
+    }
+  });
+
+// Ralph command for autonomous task execution
+program
+  .command('ralph')
+  .description('Autonomous task execution for ralph-driven workflow')
+  .option('--change <name>', 'Change name to execute')
+  .option('--max-iterations <n>', 'Maximum number of iterations (default: 10)')
+  .option('--tool <tool>', 'AI tool to use (opencode, amp, claude) (default: opencode)')
+  .option('--json', 'Output as JSON (for programmatic use)')
+  .action(async (options: RalphOptions) => {
+    try {
+      await ralphCommand(options);
     } catch (error) {
       console.log();
       ora().fail(`Error: ${(error as Error).message}`);

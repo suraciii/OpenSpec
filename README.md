@@ -121,6 +121,34 @@ The ralph-driven workflow uses `prd.json` (instead of `tasks.md`) for task track
 
 If you want the expanded workflow (`/opsx:new`, `/opsx:continue`, `/opsx:ff`, `/opsx:verify`, `/opsx:sync`, `/opsx:bulk-archive`, `/opsx:onboard`), select it with `openspec config profile` and apply with `openspec update`.
 
+#### Using the Ralph Command
+
+Once you've created a ralph-driven change with all artifacts (proposal, specs, design, prd.json), use the `ralph` command for autonomous execution:
+
+```bash
+# Execute tasks autonomously
+openspec ralph --change <change-name>
+
+# With options
+openspec ralph --change my-feature --max-iterations 5 --tool opencode --json
+```
+
+**Options:**
+- `--change <name>` (required): Change name to execute
+- `--max-iterations <n>`: Maximum iterations (default: 10)
+- `--tool <tool>`: AI tool to use (default: opencode)
+- `--json`: Output as JSON
+
+**How it works:**
+1. Loads prd.json and identifies pending tasks
+2. Archives previous progress if exists
+3. Iterates through tasks by priority
+4. Spawns AI tool (OpenCode) for each task
+5. Detects completion via `<promise>COMPLETE</promise>` signal
+6. Appends progress to `progress.txt`
+
+The AI tool reads context files (proposal, specs, design, prd.json) and implements each task, updating prd.json with `passes: true` for completed tasks.
+
 > [!NOTE]
 > Not sure if your tool is supported? [View the full list](docs/supported-tools.md) – we support 20+ tools and growing.
 >
