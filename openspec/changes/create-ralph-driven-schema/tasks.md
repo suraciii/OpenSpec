@@ -61,19 +61,25 @@
 - [ ] 8.4 Register new instruction type in command parser
 - [ ] 8.5 Add tests for Ralph instructions generation
 
-## 9. Tests for Ralph Command
+## 9. Spec Updates
 
-- [x] 9.1 Add unit tests for Ralph command core logic
-- [x] 9.2 Add integration tests for AI tool spawning
-- [x] 9.3 Add tests for progress archiving
-- [x] 9.4 Add tests for completion detection
-- [ ] 9.5 Update tests for simplified ralph.ts (loop controller only)
+- [x] 9.1 Update ralph-cli-command/spec.md for simplified CLI architecture
+- [x] 9.2 Add ralph-instructions-command/spec.md for new command
+- [x] 9.3 Update ralph-driven-workflow/spec.md to clarify progress.txt role
 
-## 10. Tests for Ralph Instructions
+## 10. Tests for Ralph Command
 
-- [ ] 10.1 Add tests for `generateRalphInstructions()`
-- [ ] 10.2 Add tests for `ralphInstructionsCommand()`
-- [ ] 10.3 Add tests for context file path generation
+- [x] 10.1 Add unit tests for Ralph command core logic
+- [x] 10.2 Add integration tests for AI tool spawning
+- [x] 10.3 Add tests for progress archiving
+- [x] 10.4 Add tests for completion detection
+- [ ] 10.5 Update tests for simplified ralph.ts (loop controller only)
+
+## 11. Tests for Ralph Instructions
+
+- [ ] 11.1 Add tests for `generateRalphInstructions()`
+- [ ] 11.2 Add tests for `ralphInstructionsCommand()`
+- [ ] 11.3 Add tests for context file path generation
 
 ## 11. Documentation
 

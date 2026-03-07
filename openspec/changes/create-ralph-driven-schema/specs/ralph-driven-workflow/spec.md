@@ -135,3 +135,35 @@ CLI commands SHALL read `passes` field to calculate progress.
 - **WHEN** user runs `openspec list --json`
 - **AND** change uses ralph-driven schema
 - **THEN** progress is calculated from `prd.json` tasks where `passes: true`
+
+---
+
+### Requirement: Execution Log (progress.txt)
+
+The system SHALL support `progress.txt` as an optional execution log for Ralph iterations.
+
+The `progress.txt` file is NOT defined in the schema. It is managed by the AI tool (opsx-ralph command) to record:
+- Timestamp of each iteration
+- Task completed in each iteration
+- Files changed
+- Learnings and patterns discovered
+
+The CLI (openspec ralph) SHALL archive existing progress.txt before starting a new run, but SHALL NOT append to or modify progress.txt during execution.
+
+#### Scenario: AI tool appends to progress.txt
+
+- **GIVEN** Ralph completes task T-002 in iteration 3
+- **WHEN** AI tool finishes implementation
+- **THEN** AI appends entry to `progress.txt` with:
+  - Timestamp
+  - Iteration number
+  - Task ID and title
+  - Files modified
+  - Learnings discovered
+
+#### Scenario: CLI archives old progress.txt
+
+- **GIVEN** previous run left content in progress.txt
+- **WHEN** user starts new `openspec ralph` execution
+- **THEN** CLI moves old progress.txt to `archive/<timestamp>/progress.txt`
+- **AND** initializes new progress.txt with header only

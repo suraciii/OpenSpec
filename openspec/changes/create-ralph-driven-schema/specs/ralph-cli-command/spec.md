@@ -14,16 +14,17 @@ The command SHALL validate that:
 The command SHALL support the following options:
 - `--max-iterations <n>`: Maximum number of iterations (default: 10)
 
-The command SHALL use built-in prompt based on `opsx-ralph.md` instruction format.
+The command SHALL be a **pure loop controller** that delegates all task execution logic to the AI tool.
 
 #### Scenario: Execute ralph command with valid change
 
 - **GIVEN** a change named "my-feature" using ralph-driven schema
 - **AND** `prd.json` exists with pending tasks
 - **WHEN** user runs `openspec ralph --change my-feature`
-- **THEN** command loads prd.json and identifies first pending task
-- **AND** command spawns configured AI tool with task context
+- **THEN** command validates the environment
+- **AND** command spawns AI tool: `opencode run --command opsx-ralph -- my-feature`
 - **AND** command waits for AI tool completion
+- **AND** command checks output for `<promise>COMPLETE</promise>` signal
 
 #### Scenario: Ralph command with missing prd.json
 
@@ -40,8 +41,6 @@ The command SHALL use built-in prompt based on `opsx-ralph.md` instruction forma
 - **THEN** command exits with error listing available changes
 - **AND** exit code is 1
 
-
-
 ---
 
 ### Requirement: Progress Archiving
@@ -56,6 +55,8 @@ On new run, if `progress.txt` exists and contains content beyond the header:
 - Reset `progress.txt` with new run header
 
 The timestamp SHALL be in format `YYYY-MM-DD-HHmmss`.
+
+**Note:** The CLI only archives old progress. The AI tool (opsx-ralph) is responsible for appending new entries to progress.txt.
 
 #### Scenario: Archive previous run
 
@@ -77,19 +78,20 @@ The timestamp SHALL be in format `YYYY-MM-DD-HHmmss`.
 ### Requirement: Iteration Loop
 
 The command SHALL execute an iteration loop until:
-- All tasks have `passes: true`
+- AI tool outputs `<promise>COMPLETE</promise>` signal
 - Maximum iterations reached
 - Fatal error occurs
 
 Each iteration SHALL:
-1. Find highest priority pending task (lowest priority number with `passes: false`)
-2. Spawn AI tool with task context
-3. Wait for AI tool to complete
-4. Check for completion signal `<promise>COMPLETE</promise>` in output
-5. Append iteration result to `progress.txt`
-6. If completion signal found, exit loop successfully
+1. Spawn AI tool: `opencode run --command opsx-ralph -- <change-name>`
+2. Wait for AI tool to complete
+3. Check for completion signal `<promise>COMPLETE</promise>` in output
+4. If completion signal found, exit loop successfully
+5. Otherwise, continue to next iteration
 
 The command SHALL wait between iterations to avoid overwhelming AI services.
+
+**Note:** The CLI does NOT read prd.json, select tasks, or update progress. All task logic is delegated to the AI tool.
 
 #### Scenario: Complete all tasks in single iteration
 
@@ -104,7 +106,7 @@ The command SHALL wait between iterations to avoid overwhelming AI services.
 
 - **GIVEN** prd.json with 3 pending tasks
 - **WHEN** command executes iteration loop
-- **AND** each iteration completes one task
+- **AND** AI tool completes one task per iteration
 - **THEN** command runs 3 iterations
 - **AND** exits successfully after all tasks complete
 
@@ -115,7 +117,7 @@ The command SHALL wait between iterations to avoid overwhelming AI services.
 - **WHEN** command executes 3 iterations
 - **AND** not all tasks complete
 - **THEN** command outputs incomplete status
-- **AND** lists remaining tasks
+- **AND** lists remaining tasks (by reading prd.json for final status)
 - **AND** exit code is 1
 
 ---
@@ -124,25 +126,26 @@ The command SHALL wait between iterations to avoid overwhelming AI services.
 
 The command SHALL spawn OpenCode as the AI tool for task execution.
 
-The AI tool SHALL receive:
-- Built-in prompt based on `opsx-ralph.md` instruction format
-- Change context (change name, paths to context files)
-
-Tool invocation:
+The AI tool SHALL be invoked via opencode command:
 - **opencode**: `opencode run --command opsx-ralph -- <change-name>`
+
+The command SHALL execute the AI tool from the **project root directory** (not the change directory).
+
+The command SHALL NOT use `shell: true` when spawning the AI tool.
 
 The command SHALL detect OpenCode availability (in PATH) and provide helpful error if not found.
 
 Future versions MAY support additional AI tools (amp, claude, etc.).
 
-#### Scenario: Use built-in prompt
+#### Scenario: Use opsx-ralph command
 
 - **GIVEN** OpenCode is installed and in PATH
 - **AND** change "my-feature" has pending tasks
 - **WHEN** user runs `openspec ralph --change my-feature`
-- **THEN** command loads built-in prompt from `opsx-ralph.md`
-- **AND** spawns OpenCode with the prompt and change context
+- **THEN** command spawns OpenCode with opsx-ralph command
+- **AND** passes change name as argument
 - **AND** waits for OpenCode to complete
+- **AND** stdout/stderr are streamed to console
 
 #### Scenario: Missing OpenCode tool
 
@@ -164,7 +167,7 @@ Fatal errors (immediate exit with code 1):
 - Permission denied for file operations
 
 Recoverable errors (log warning, continue to next iteration):
-- AI tool returns non-zero exit code
+- AI tool returns non-zero exit code (but process started)
 - AI tool output parsing fails
 - Network errors during AI tool execution
 
@@ -172,8 +175,9 @@ For fatal errors, the command SHALL output clear error message and exit immediat
 
 For recoverable errors, the command SHALL:
 - Log warning to stderr
-- Append error to progress.txt
 - Continue to next iteration after delay
+
+**Note:** The CLI does NOT append errors to progress.txt. The AI tool manages progress.txt.
 
 #### Scenario: Fatal error stops execution
 
@@ -186,50 +190,35 @@ For recoverable errors, the command SHALL:
 #### Scenario: Recoverable error continues
 
 - **GIVEN** iteration 2 encounters network error
-- **WHEN** AI tool fails
+- **WHEN** AI tool fails with non-zero exit code
 - **THEN** command logs warning to stderr
-- **AND** appends error to progress.txt
 - **AND** continues to iteration 3 after delay
 
 ---
 
-### Requirement: Progress Tracking
+### Requirement: CLI Does NOT Manage Tasks
 
-The command SHALL append structured progress information to `progress.txt` after each iteration.
+The command SHALL NOT:
+- Read or parse prd.json for task selection
+- Select which task to execute next
+- Generate prompts or instructions for the AI
+- Update prd.json (set passes: true)
+- Append to progress.txt
 
-Progress entry format:
-```
-## [YYYY-MM-DD HH:mm:ss] - Iteration [N]
+All task-related logic SHALL be handled by the AI tool (opsx-ralph command).
 
-Task: [T-XXX] [Task Title]
-Status: [completed|failed|error]
+The CLI SHALL only:
+- Validate environment
+- Archive previous progress
+- Loop and spawn AI tool
+- Detect completion signal
 
-### What was implemented
-[Description]
+#### Scenario: CLI remains agnostic to task logic
 
-### Files changed
-- [file path]
-
-### Learnings
-- [Pattern discovered]
-- [Gotcha encountered]
-
----
-```
-
-The first section of `progress.txt` SHALL contain "Codebase Patterns" for accumulated learnings across iterations.
-
-#### Scenario: Progress log after iteration
-
-- **GIVEN** iteration completes successfully
-- **WHEN** AI finishes task T-003
-- **THEN** progress.txt appends entry with:
-  - Timestamp
-  - Iteration number
-  - Task ID and title
-  - Implementation summary
-  - Files changed
-  - Learnings
+- **GIVEN** prd.json structure changes in future version
+- **WHEN** user runs `openspec ralph --change my-feature`
+- **THEN** command continues to work unchanged
+- **AND** AI tool (opsx-ralph) handles new prd.json format
 
 ---
 
@@ -259,6 +248,6 @@ The command SHALL NOT require external scripts or configuration files beyond the
 - **GIVEN** user initializes project with `openspec init --schema ralph-driven`
 - **AND** user creates change via `/opsx-propose` (generates prd.json)
 - **WHEN** user runs `openspec ralph --change my-feature`
-- **THEN** command executes all tasks in prd.json
+- **THEN** command executes all tasks via iterative AI tool calls
 - **AND** archives progress after completion
 - **AND** user can run `openspec archive my-feature` to finalize
