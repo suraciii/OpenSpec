@@ -89,3 +89,13 @@
 - [x] 11.4 Document `openspec instructions ralph` command
 - [x] 11.5 Update opsx-ralph.md with iteration responsibilities
 - [x] 11.6 Document architecture differences: spec-driven vs ralph-driven
+
+## 12. Schema-Defined Workflows
+
+- [x] 12.1 Add `workflows?: string[]` field to schema type in `src/core/artifact-graph/resolver.ts`
+- [x] 12.2 Update `resolveSchema()` to include workflows field in return type
+- [x] 12.3 Add `workflows: [propose, explore, ralph, archive]` to `schemas/ralph-driven/schema.yaml`
+- [x] 12.4 Update `src/core/init.ts` to use schema.workflows when present (fallback to profile)
+- [x] 12.5 Remove hardcoded `if (schemaToUse === 'ralph-driven')` check in init.ts
+- [x] 12.6 Add tests for schema-defined workflows in init
+- [x] 12.7 Verify `openspec init --schema ralph-driven` only generates correct skills/commands

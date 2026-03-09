@@ -66,6 +66,15 @@ export class MarkdownTaskParser implements TaskParser {
   }
 }
 
+interface PrdTask {
+  id?: string;
+  title?: string;
+  description?: string;
+  passes?: boolean;
+  priority?: number;
+  acceptanceCriteria?: string[];
+}
+
 export class PrdJsonTaskParser implements TaskParser {
   parse(content: string): TaskProgress {
     try {
@@ -75,8 +84,7 @@ export class PrdJsonTaskParser implements TaskParser {
       }
 
       const total = prd.tasks.length;
-      const completed = prd.tasks.filter((task: any) => task.passes === true).length;
-
+      const completed = prd.tasks.filter((task: PrdTask) => task.passes === true).length;
       return { total, completed };
     } catch {
       return { total: 0, completed: 0 };
@@ -90,7 +98,7 @@ export class PrdJsonTaskParser implements TaskParser {
         return [];
       }
 
-      return prd.tasks.map((task: any) => ({
+      return prd.tasks.map((task: PrdTask) => ({
         id: task.id || 'T-000',
         description: task.title || task.description || '',
         done: task.passes === true,

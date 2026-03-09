@@ -32,16 +32,8 @@ export interface InstructionsOptions {
   json?: boolean;
 }
 
-export interface ApplyInstructionsOptions {
-  change?: string;
-  schema?: string;
-  json?: boolean;
-}
-
-export interface RalphInstructionsOptions {
-  change?: string;
-  json?: boolean;
-}
+export type ApplyInstructionsOptions = InstructionsOptions;
+export type RalphInstructionsOptions = InstructionsOptions;
 
 export interface RalphTask {
   id: string;
@@ -529,10 +521,8 @@ export async function generateRalphInstructions(
 
   const contextFiles: Record<string, string> = {};
   for (const artifact of schema.artifacts) {
-    const generatesPath = artifact.generates.split('/').join(path.sep);
-    const fullPath = path.join(changeDir, generatesPath);
-    if (fs.existsSync(fullPath)) {
-      contextFiles[artifact.id] = fullPath;
+    if (artifactOutputExists(changeDir, artifact.generates)) {
+      contextFiles[artifact.id] = path.join(changeDir, artifact.generates);
     }
   }
 

@@ -37,7 +37,7 @@ describe('ralph instructions command', () => {
 
   async function createRalphDrivenChange(
     changeName: string,
-    options: { prdData?: any } = {}
+    options: { prdData?: any; includeSpecs?: boolean } = {}
   ): Promise<string> {
     const changeDir = path.join(changesDir, changeName);
     await fs.mkdir(changeDir, { recursive: true });
@@ -56,6 +56,15 @@ describe('ralph instructions command', () => {
       path.join(changeDir, 'design.md'),
       '# Design\n\n## Overview\nTest design'
     );
+
+    if (options.includeSpecs) {
+      const specsDir = path.join(changeDir, 'specs', 'test-capability');
+      await fs.mkdir(specsDir, { recursive: true });
+      await fs.writeFile(
+        path.join(specsDir, 'spec.md'),
+        '# Test Capability Spec\n\n### Requirement: Test\nTest requirement'
+      );
+    }
 
     if (options.prdData) {
       await fs.writeFile(
@@ -152,6 +161,27 @@ describe('ralph instructions command', () => {
       expect(output.progress.total).toBe(2);
       expect(output.progress.completed).toBe(2);
       expect(output.progress.remaining).toBe(0);
+    });
+
+    it('includes specs files in contextFiles when specs directory exists (glob pattern support)', async () => {
+      await createRalphDrivenChange('test-specs-context', {
+        prdData: createOpenPrdData(1),
+        includeSpecs: true,
+      });
+      const result = await runCLI(
+        ['instructions', 'ralph', '--change', 'test-specs-context', '--json'],
+        { cwd: tempDir }
+      );
+      expect(result.exitCode).toBe(0);
+      const output = JSON.parse(extractJson(getOutput(result)));
+      
+      expect(output.contextFiles).toBeDefined();
+      expect(output.contextFiles.proposal).toBeDefined();
+      expect(output.contextFiles.design).toBeDefined();
+      expect(output.contextFiles.prd).toBeDefined();
+      
+      expect(output.contextFiles.specs).toBeDefined();
+      expect(output.contextFiles.specs).toMatch(/specs/);
     });
   });
 });

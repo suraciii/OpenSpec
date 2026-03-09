@@ -65,6 +65,57 @@ describe('InitCommand', () => {
       expect(await directoryExists(path.join(openspecPath, 'changes', 'archive'))).toBe(true);
     });
 
+    describe('schema option', () => {
+      it('should create config.yaml with default schema in non-interactive mode', async () => {
+        const initCommand = new InitCommand({ tools: 'claude', force: true });
+
+        await initCommand.execute(testDir);
+
+        const configPath = path.join(testDir, 'openspec', 'config.yaml');
+        expect(await fileExists(configPath)).toBe(true);
+
+        const content = await fs.readFile(configPath, 'utf-8');
+        expect(content).toContain('schema: spec-driven');
+      });
+
+      it('should create config.yaml with custom schema when --schema is provided', async () => {
+        const initCommand = new InitCommand({ tools: 'claude', schema: 'ralph-driven' });
+
+        await initCommand.execute(testDir);
+
+        const configPath = path.join(testDir, 'openspec', 'config.yaml');
+        expect(await fileExists(configPath)).toBe(true);
+
+        const content = await fs.readFile(configPath, 'utf-8');
+        expect(content).toContain('schema: ralph-driven');
+      });
+
+      it('should create config.yaml with ralph-driven schema in non-interactive mode without --force', async () => {
+        // This is the key test case for the bug fix:
+        // Non-interactive mode (using --tools) without --force should still create
+        // config.yaml if --schema is provided
+        const initCommand = new InitCommand({ tools: 'claude', schema: 'ralph-driven' });
+
+        await initCommand.execute(testDir);
+
+        const configPath = path.join(testDir, 'openspec', 'config.yaml');
+        expect(await fileExists(configPath)).toBe(true);
+
+        const content = await fs.readFile(configPath, 'utf-8');
+        expect(content).toContain('schema: ralph-driven');
+      });
+
+      it('should skip config creation in non-interactive mode without --force and without --schema', async () => {
+        // Without --schema, config should be skipped in non-interactive mode
+        const initCommand = new InitCommand({ tools: 'claude' });
+
+        await initCommand.execute(testDir);
+
+        const configPath = path.join(testDir, 'openspec', 'config.yaml');
+        expect(await fileExists(configPath)).toBe(false);
+      });
+    });
+
     it('should create config.yaml with default schema', async () => {
       const initCommand = new InitCommand({ tools: 'claude', force: true });
 
@@ -738,6 +789,70 @@ describe('InitCommand - profile and detection features', () => {
 
     const skillFile = path.join(testDir, '.claude', 'skills', 'openspec-explore', 'SKILL.md');
     expect(await fileExists(skillFile)).toBe(true);
+  });
+
+  describe('schema-defined workflows', () => {
+    it('should use schema-defined workflows for ralph-driven schema', async () => {
+      const initCommand = new InitCommand({ tools: 'claude', schema: 'ralph-driven', force: true });
+
+      await initCommand.execute(testDir);
+
+      // ralph-driven schema defines: propose, explore, ralph, archive
+      // It does NOT include 'apply'
+      const expectedSkills = [
+        'openspec-propose',
+        'openspec-explore',
+        'opsx-ralph',
+        'openspec-archive-change',
+      ];
+
+      for (const skillName of expectedSkills) {
+        const skillFile = path.join(testDir, '.claude', 'skills', skillName, 'SKILL.md');
+        expect(await fileExists(skillFile)).toBe(true);
+      }
+
+      // 'apply' should NOT be created for ralph-driven schema
+      const applySkill = path.join(testDir, '.claude', 'skills', 'openspec-apply-change', 'SKILL.md');
+      expect(await fileExists(applySkill)).toBe(false);
+
+      // Commands should also follow schema-defined workflows
+      const expectedCommands = [
+        'opsx/propose.md',
+        'opsx/explore.md',
+        'opsx/ralph.md',
+        'opsx/archive.md',
+      ];
+
+      for (const cmdName of expectedCommands) {
+        const cmdFile = path.join(testDir, '.claude', 'commands', cmdName);
+        expect(await fileExists(cmdFile)).toBe(true);
+      }
+
+      // 'apply' command should NOT exist
+      const applyCommand = path.join(testDir, '.claude', 'commands', 'opsx', 'apply.md');
+      expect(await fileExists(applyCommand)).toBe(false);
+    });
+
+    it('should fall back to profile workflows when schema has no workflows defined', async () => {
+      // spec-driven schema does not define workflows, so it should use core profile
+      const initCommand = new InitCommand({ tools: 'claude', schema: 'spec-driven', force: true });
+
+      await initCommand.execute(testDir);
+
+      // Core profile includes: propose, explore, apply, archive, ralph
+      const coreSkills = [
+        'openspec-propose',
+        'openspec-explore',
+        'openspec-apply-change',
+        'openspec-archive-change',
+        'opsx-ralph',
+      ];
+
+      for (const skillName of coreSkills) {
+        const skillFile = path.join(testDir, '.claude', 'skills', skillName, 'SKILL.md');
+        expect(await fileExists(skillFile)).toBe(true);
+      }
+    });
   });
 });
 

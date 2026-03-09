@@ -28,6 +28,8 @@ export const SchemaYamlSchema = z.object({
   artifacts: z.array(ArtifactSchema).min(1, { error: 'At least one artifact required' }),
   // Optional apply phase configuration (for schema-aware apply instructions)
   apply: ApplyPhaseSchema.optional(),
+  // Optional: workflows this schema requires (overrides profile during init)
+  workflows: z.array(z.string()).optional(),
 });
 
 // Derived TypeScript types

@@ -16,6 +16,7 @@ import {
   getVerifyChangeSkillTemplate,
   getOnboardSkillTemplate,
   getOpsxProposeSkillTemplate,
+  getOpsxRalphSkillTemplate,
   getOpsxExploreCommandTemplate,
   getOpsxNewCommandTemplate,
   getOpsxContinueCommandTemplate,
@@ -27,6 +28,7 @@ import {
   getOpsxVerifyCommandTemplate,
   getOpsxOnboardCommandTemplate,
   getOpsxProposeCommandTemplate,
+  getOpsxRalphCommandTemplate,
   type SkillTemplate,
 } from '../templates/skill-templates.js';
 import type { CommandContent } from '../command-generation/index.js';
@@ -53,7 +55,7 @@ export interface CommandTemplateEntry {
  *
  * @param workflowFilter - If provided, only return templates whose workflowId is in this array
  */
-export function getSkillTemplates(workflowFilter?: readonly string[]): SkillTemplateEntry[] {
+export function getSkillTemplates(workflowFilter?: readonly string[], schema?: string): SkillTemplateEntry[] {
   const all: SkillTemplateEntry[] = [
     { template: getExploreSkillTemplate(), dirName: 'openspec-explore', workflowId: 'explore' },
     { template: getNewChangeSkillTemplate(), dirName: 'openspec-new-change', workflowId: 'new' },
@@ -65,7 +67,8 @@ export function getSkillTemplates(workflowFilter?: readonly string[]): SkillTemp
     { template: getBulkArchiveChangeSkillTemplate(), dirName: 'openspec-bulk-archive-change', workflowId: 'bulk-archive' },
     { template: getVerifyChangeSkillTemplate(), dirName: 'openspec-verify-change', workflowId: 'verify' },
     { template: getOnboardSkillTemplate(), dirName: 'openspec-onboard', workflowId: 'onboard' },
-    { template: getOpsxProposeSkillTemplate(), dirName: 'openspec-propose', workflowId: 'propose' },
+    { template: getOpsxProposeSkillTemplate(schema), dirName: 'openspec-propose', workflowId: 'propose' },
+    { template: getOpsxRalphSkillTemplate(), dirName: 'opsx-ralph', workflowId: 'ralph' },
   ];
 
   if (!workflowFilter) return all;
@@ -79,7 +82,7 @@ export function getSkillTemplates(workflowFilter?: readonly string[]): SkillTemp
  *
  * @param workflowFilter - If provided, only return templates whose id is in this array
  */
-export function getCommandTemplates(workflowFilter?: readonly string[]): CommandTemplateEntry[] {
+export function getCommandTemplates(workflowFilter?: readonly string[], schema?: string): CommandTemplateEntry[] {
   const all: CommandTemplateEntry[] = [
     { template: getOpsxExploreCommandTemplate(), id: 'explore' },
     { template: getOpsxNewCommandTemplate(), id: 'new' },
@@ -91,7 +94,8 @@ export function getCommandTemplates(workflowFilter?: readonly string[]): Command
     { template: getOpsxBulkArchiveCommandTemplate(), id: 'bulk-archive' },
     { template: getOpsxVerifyCommandTemplate(), id: 'verify' },
     { template: getOpsxOnboardCommandTemplate(), id: 'onboard' },
-    { template: getOpsxProposeCommandTemplate(), id: 'propose' },
+    { template: getOpsxProposeCommandTemplate(schema), id: 'propose' },
+    { template: getOpsxRalphCommandTemplate(), id: 'ralph' },
   ];
 
   if (!workflowFilter) return all;
@@ -105,8 +109,8 @@ export function getCommandTemplates(workflowFilter?: readonly string[]): Command
  *
  * @param workflowFilter - If provided, only return contents whose id is in this array
  */
-export function getCommandContents(workflowFilter?: readonly string[]): CommandContent[] {
-  const commandTemplates = getCommandTemplates(workflowFilter);
+export function getCommandContents(workflowFilter?: readonly string[], schema?: string): CommandContent[] {
+  const commandTemplates = getCommandTemplates(workflowFilter, schema);
   return commandTemplates.map(({ template, id }) => ({
     id,
     name: template.name,

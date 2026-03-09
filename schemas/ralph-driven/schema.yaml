@@ -1,6 +1,11 @@
 name: ralph-driven
 version: 1
 description: Ralph autonomous agent workflow - proposal → specs → design → prd.json (for iterative execution)
+workflows:
+  - propose
+  - explore
+  - ralph
+  - archive
 artifacts:
   - id: proposal
     generates: proposal.md

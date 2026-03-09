@@ -334,6 +334,48 @@ openspec instructions ralph --change <name> [--json]
 | Progress file | tasks.md | prd.json + progress.txt |
 | Invocation | Single long session | Multiple short iterations |
 
+### D10: Schema-Defined Workflows
+
+**Decision:** Allow schemas to define their required workflows, which override profile defaults during `openspec init`.
+
+**Implementation:**
+```yaml
+# schemas/ralph-driven/schema.yaml
+name: ralph-driven
+version: 1
+workflows:  # NEW FIELD
+  - propose
+  - explore
+  - ralph
+  - archive
+artifacts:
+  ...
+```
+
+**Code Change (init.ts):**
+```typescript
+// Before:
+let workflows = getProfileWorkflows(profile, globalConfig.workflows);
+if (schemaToUse === 'ralph-driven' && !workflows.includes('ralph')) {
+  workflows = [...workflows, 'ralph'];  // Hardcoded!
+}
+
+// After:
+const schema = resolveSchema(schemaToUse, projectPath);
+let workflows = schema.workflows 
+  ?? getProfileWorkflows(profile, globalConfig.workflows);
+```
+
+**Rationale:**
+- **Self-contained:** Schema defines everything it needs, no hidden dependencies
+- **No hardcoding:** Removes special-case logic for ralph-driven
+- **Backward compatible:** If schema doesn't define `workflows`, falls back to profile
+- **Clear semantics:** `ralph-driven` schema doesn't need `apply` workflow, only `ralph`
+
+**Effect:**
+- `openspec init --schema ralph-driven` installs: propose, explore, ralph, archive
+- `openspec init` (default spec-driven) uses core profile: propose, explore, apply, archive, ralph
+
 ## Risks / Trade-offs
 
 | Risk | Mitigation |

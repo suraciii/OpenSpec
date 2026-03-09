@@ -45,6 +45,7 @@ import { getGlobalConfig, type Delivery, type Profile } from './global-config.js
 import { getProfileWorkflows, CORE_WORKFLOWS, ALL_WORKFLOWS } from './profiles.js';
 import { getAvailableTools } from './available-tools.js';
 import { migrateIfNeeded } from './migration.js';
+import { resolveSchema } from './artifact-graph/resolver.js';
 
 const require = createRequire(import.meta.url);
 const { version: OPENSPEC_VERSION } = require('../../package.json');
@@ -72,6 +73,7 @@ const WORKFLOW_TO_SKILL_DIR: Record<string, string> = {
   'verify': 'openspec-verify-change',
   'onboard': 'openspec-onboard',
   'propose': 'openspec-propose',
+  'ralph': 'opsx-ralph',
 };
 
 // -----------------------------------------------------------------------------
@@ -504,6 +506,7 @@ export class InitCommand {
     commandsSkipped: string[];
     removedCommandCount: number;
     removedSkillCount: number;
+    workflows: readonly string[];
   }> {
     const createdTools: typeof tools = [];
     const refreshedTools: typeof tools = [];
@@ -516,13 +519,17 @@ export class InitCommand {
     const globalConfig = getGlobalConfig();
     const profile: Profile = this.resolveProfileOverride() ?? globalConfig.profile ?? 'core';
     const delivery: Delivery = globalConfig.delivery ?? 'both';
-    const workflows = getProfileWorkflows(profile, globalConfig.workflows);
+    const schemaToUse = this.schemaOverride ?? DEFAULT_SCHEMA;
+    
+    // Use schema-defined workflows if available, otherwise fall back to profile
+    const schema = resolveSchema(schemaToUse, projectPath);
+    const workflows = schema.workflows ?? getProfileWorkflows(profile, globalConfig.workflows);
 
     // Get skill and command templates filtered by profile workflows
     const shouldGenerateSkills = delivery !== 'commands';
     const shouldGenerateCommands = delivery !== 'skills';
-    const skillTemplates = shouldGenerateSkills ? getSkillTemplates(workflows) : [];
-    const commandContents = shouldGenerateCommands ? getCommandContents(workflows) : [];
+    const skillTemplates = shouldGenerateSkills ? getSkillTemplates(workflows, schemaToUse) : [];
+    const commandContents = shouldGenerateCommands ? getCommandContents(workflows, schemaToUse) : [];
 
     // Process each tool
     for (const tool of tools) {
@@ -591,6 +598,7 @@ export class InitCommand {
       commandsSkipped,
       removedCommandCount,
       removedSkillCount,
+      workflows,
     };
   }
 
@@ -608,8 +616,9 @@ export class InitCommand {
       return 'exists';
     }
 
-    // In non-interactive mode without --force, skip config creation
-    if (!this.canPromptInteractively() && !this.force) {
+    // In non-interactive mode without --force and without --schema, skip config creation
+    // If --schema is provided, we should create the config even in non-interactive mode
+    if (!this.canPromptInteractively() && !this.force && !this.schemaOverride) {
       return 'skipped';
     }
 
@@ -637,6 +646,7 @@ export class InitCommand {
       commandsSkipped: string[];
       removedCommandCount: number;
       removedSkillCount: number;
+      workflows: readonly string[];
     },
     configStatus: 'created' | 'exists' | 'skipped'
   ): void {
@@ -656,9 +666,8 @@ export class InitCommand {
     const successfulTools = [...results.createdTools, ...results.refreshedTools];
     if (successfulTools.length > 0) {
       const globalConfig = getGlobalConfig();
-      const profile: Profile = (this.profileOverride as Profile) ?? globalConfig.profile ?? 'core';
       const delivery: Delivery = globalConfig.delivery ?? 'both';
-      const workflows = getProfileWorkflows(profile, globalConfig.workflows);
+      const workflows = results.workflows;
       const toolDirs = [...new Set(successfulTools.map((t) => t.skillsDir))].join(', ');
       const skillCount = delivery !== 'commands' ? getSkillTemplates(workflows).length : 0;
       const commandCount = delivery !== 'skills' ? getCommandContents(workflows).length : 0;

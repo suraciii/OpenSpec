@@ -452,7 +452,7 @@ program
       if (artifactId === 'apply') {
         await applyInstructionsCommand(options);
       } else if (artifactId === 'ralph') {
-        await ralphInstructionsCommand(options as any);
+        await ralphInstructionsCommand(options);
       } else {
         await instructionsCommand(artifactId, options);
       }
