@@ -62,7 +62,7 @@ export async function ralphCommand(options: RalphOptions): Promise<void> {
       const progressContent = await fs.readFile(progressPath, 'utf-8');
       // Archive if there's actual content beyond the header
       const lines = progressContent.trim().split('\n');
-      const hasContent = lines.length > 3; // header + started line + separator
+      const hasContent = lines.length > 4; // header + started line + empty line + separator
       if (hasContent) {
         await archiveProgress(changeDir, progressContent);
       }
