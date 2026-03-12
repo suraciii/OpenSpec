@@ -23,7 +23,7 @@ describe('ralph command', () => {
 
   afterEach(async () => {
     setExecutor({
-      executeOpenCode: () => '',
+      executeOpenCode: async () => '',
     });
     if (tempDir) {
       await fs.rm(tempDir, { recursive: true, force: true });
@@ -114,7 +114,7 @@ describe('ralph command', () => {
         prdData: createOpenPrdData(1),
       });
 
-      mockExecutor.executeOpenCode = vi.fn().mockReturnValue('<promise>COMPLETE</promise>');
+      mockExecutor.executeOpenCode = vi.fn().mockResolvedValue('<promise>COMPLETE</promise>');
 
       await ralphCommand({ change: 'exec-test', maxIterations: 10 });
 
@@ -130,7 +130,7 @@ describe('ralph command', () => {
       });
 
       // Mock returns empty string (no completion signal)
-      mockExecutor.executeOpenCode = vi.fn().mockReturnValue('');
+      mockExecutor.executeOpenCode = vi.fn().mockResolvedValue('');
 
       await ralphCommand({ change: 'no-complete-test', maxIterations: 1 });
       expect(process.exitCode).toBe(1);
@@ -150,7 +150,7 @@ describe('ralph command', () => {
       const progressPath = path.join(changeDir, 'progress.txt');
       await fs.writeFile(progressPath, '# Ralph Progress Log\n\nSome previous content here that is long enough to trigger archiving\n\n---\n');
 
-      mockExecutor.executeOpenCode = vi.fn().mockReturnValue('');
+      mockExecutor.executeOpenCode = vi.fn().mockResolvedValue('');
 
       await ralphCommand({ change: 'archive-test', maxIterations: 1 });
 
@@ -168,7 +168,7 @@ describe('ralph command', () => {
         prdData: createCompletedPrdData(1),
       });
 
-      mockExecutor.executeOpenCode = vi.fn().mockReturnValue('');
+      mockExecutor.executeOpenCode = vi.fn().mockResolvedValue('');
 
       await ralphCommand({ change: 'init-test', maxIterations: 1 });
 
@@ -178,6 +178,23 @@ describe('ralph command', () => {
 
       process.cwd = originalCwd;
     });
+  });
+
+  describe('RealExecutor integration', () => {
+    it('can execute a simple command using RealExecutor', async () => {
+      const { RealExecutor } = await import('../../src/commands/workflow/ralph.js');
+      const realExecutor = new RealExecutor();
+      
+      // Test with a simple command that works on both Windows and Unix
+      const isWindows = process.platform === 'win32';
+      const command = isWindows ? 'cmd /c echo hello' : 'echo hello';
+      
+      const output = await realExecutor.executeOpenCode(command);
+      
+      // The output should contain 'hello' (output is streamed to console, 
+      // but we also capture it for return)
+      expect(output.toLowerCase()).toContain('hello');
+    }, 10000);
   });
 });
 

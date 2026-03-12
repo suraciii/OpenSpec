@@ -1,6 +1,7 @@
 import ora from 'ora';
 import chalk from 'chalk';
 import { execSync } from 'child_process';
+import { spawn } from 'cross-spawn';
 import { promises as fs } from 'fs';
 import * as fsSync from 'fs';
 import path from 'path';
@@ -13,14 +14,52 @@ export interface RalphOptions {
 }
 
 export interface Executor {
-  executeOpenCode(command: string): string;
+  executeOpenCode(command: string): Promise<string>;
 }
 
-class RealExecutor implements Executor {
-  executeOpenCode(command: string): string {
-    return execSync(command, {
-      stdio: 'pipe',
-      encoding: 'utf-8',
+export class RealExecutor implements Executor {
+  async executeOpenCode(command: string): Promise<string> {
+    const parts = command.split(' ');
+    const cmd = parts[0];
+    const args = parts.slice(1);
+    
+    return new Promise((resolve, reject) => {
+      const child = spawn(cmd, args, {
+        stdio: ['inherit', 'pipe', 'inherit']
+      });
+      
+      let fullOutput = '';
+      let childPid: number | undefined;
+      
+      try {
+        childPid = child.pid;
+      } catch {
+        // pid might not be available on some platforms
+      }
+      
+      child.stdout?.on('data', (data: Buffer) => {
+        process.stdout.write(data);
+        fullOutput += data.toString();
+      });
+      
+      child.on('error', (err) => {
+        if (childPid) {
+          try {
+            process.kill(childPid);
+          } catch {
+            // Process might already be dead
+          }
+        }
+        reject(new Error(`Failed to spawn process: ${err.message}`));
+      });
+      
+      child.on('close', (code) => {
+        if (code === 0) {
+          resolve(fullOutput);
+        } else {
+          reject(new Error(`OpenCode process exited with code ${code}`));
+        }
+      });
     });
   }
 }
@@ -92,7 +131,7 @@ export async function ralphCommand(options: RalphOptions): Promise<void> {
       console.log(chalk.cyan(`\n## Iteration ${i}/${maxIterations}`));
 
       try {
-        const output = executor.executeOpenCode('opencode run --command opsx-ralph -- ' + changeName);
+        const output = await executor.executeOpenCode('opencode run --command opsx-ralph -- ' + changeName);
         
         if (output.includes('<promise>COMPLETE</promise>')) {
           console.log(chalk.green('\n✓ All tasks complete!'));
