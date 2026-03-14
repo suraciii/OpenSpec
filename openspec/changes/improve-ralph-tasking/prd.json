@@ -1,0 +1,92 @@
+{
+  "project": "OpenSpec",
+  "description": "Improve ralph-driven tasking with spec references",
+  "tasks": [
+    {
+      "id": "T-001",
+      "title": "Update prd.json template with spec field",
+      "spec": "specs/ralph-tasking/spec.md#REQ-001",
+      "description": "Add optional `spec` field to schemas/ralph-driven/templates/prd.json with example and comments",
+      "acceptanceCriteria": [
+        "Template JSON is valid",
+        "Typecheck passes"
+      ],
+      "priority": 1,
+      "passes": false
+    },
+    {
+      "id": "T-002",
+      "title": "Update schema.yaml prd instruction",
+      "spec": "specs/ralph-tasking/spec.md#REQ-002",
+      "description": "Update schemas/ralph-driven/schema.yaml to document new acceptanceCriteria semantics (supplementary checks)",
+      "acceptanceCriteria": [
+        "Instruction explains when to use acceptanceCriteria",
+        "Typecheck passes"
+      ],
+      "priority": 2,
+      "passes": false
+    },
+    {
+      "id": "T-003",
+      "title": "Add spec field to TaskItem interface",
+      "description": "Update src/utils/task-progress.ts TaskItem interface to include optional `spec` field",
+      "acceptanceCriteria": [
+        "TypeScript compiles",
+        "Typecheck passes"
+      ],
+      "priority": 3,
+      "passes": false
+    },
+    {
+      "id": "T-004",
+      "title": "Implement spec content extraction",
+      "spec": "specs/ralph-tasking/spec.md#REQ-003",
+      "description": "Add function to extract specific requirement content from spec file by ID",
+      "acceptanceCriteria": [
+        "Function extracts requirement by #REQ-ID fragment",
+        "Function extracts scenarios from requirement",
+        "Unit tests pass"
+      ],
+      "priority": 4,
+      "passes": false
+    },
+    {
+      "id": "T-005",
+      "title": "Update generateRalphInstructions to inline spec",
+      "spec": "specs/ralph-tasking/spec.md#REQ-003",
+      "description": "Modify src/commands/workflow/instructions.ts generateRalphInstructions to include specContent and scenarios for current task",
+      "acceptanceCriteria": [
+        "JSON output includes specContent when task has spec",
+        "JSON output includes scenarios array",
+        "Backward compatible with tasks without spec",
+        "Tests pass"
+      ],
+      "priority": 5,
+      "passes": false
+    },
+    {
+      "id": "T-006",
+      "title": "Update opsx-ralph skill for new structure",
+      "description": "Update .opencode/skills/opsx-ralph/SKILL.md to use new instruction format with specContent and scenarios",
+      "acceptanceCriteria": [
+        "Skill reads specContent from instructions",
+        "Skill verifies scenarios + acceptanceCriteria",
+        "Typecheck passes"
+      ],
+      "priority": 6,
+      "passes": false
+    },
+    {
+      "id": "T-007",
+      "title": "Add integration tests",
+      "description": "Add tests for Ralph instructions with spec references in test/commands/ralph-instructions.test.ts",
+      "acceptanceCriteria": [
+        "Test task with spec includes specContent",
+        "Test task without spec uses acceptanceCriteria only",
+        "All tests pass"
+      ],
+      "priority": 7,
+      "passes": false
+    }
+  ]
+}
