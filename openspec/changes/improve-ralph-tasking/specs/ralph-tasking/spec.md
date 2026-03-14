@@ -2,13 +2,13 @@
 
 ### Requirement: REQ-001 Task can reference spec requirement
 
-The system SHALL allow prd.json tasks to reference a specific spec requirement via a `spec` field.
+The system SHALL allow prd.json tasks to reference a single spec requirement via a `spec` field.
 
 #### Scenario: Task with spec reference
 
 - **WHEN** a task has `spec` field set to `specs/export/spec.md#REQ-001`
-- **THEN** Ralph instructions include the content of that specific requirement
-- **AND** scenarios from that requirement are treated as acceptance criteria
+- **THEN** the task output includes the `spec` field
+- **AND** Ralph reads the spec file to find acceptance criteria
 
 #### Scenario: Task without spec reference
 
@@ -33,19 +33,19 @@ The system SHALL treat `acceptanceCriteria` as supplementary verification items.
 - **THEN** acceptanceCriteria represents all verification items
 - **AND** task passes when all criteria are satisfied
 
-### Requirement: REQ-003 Ralph instructions include spec content inline
+### Requirement: REQ-003 Tasks output includes spec field
 
-The system SHALL include referenced spec requirement content directly in Ralph instructions JSON.
+The system SHALL include the `spec` field in tasks array output when generating Ralph instructions.
 
-#### Scenario: Spec content inlined in instructions
+#### Scenario: Task with spec in output
 
 - **WHEN** `openspec instructions ralph --change <name> --json` is called
-- **AND** current task has a `spec` reference
-- **THEN** output includes `specContent` field with the requirement's markdown
-- **AND** output includes `scenarios` array extracted from spec
+- **AND** a task in prd.json has a `spec` field
+- **THEN** the task in output includes the `spec` field
+- **AND** Ralph can read the spec file to find the requirement
 
-#### Scenario: No spec reference
+#### Scenario: Task without spec in output
 
-- **WHEN** current task has no `spec` reference
-- **THEN** output does not include `specContent` field
-- **AND** output uses `acceptanceCriteria` for verification instructions
+- **WHEN** a task in prd.json has no `spec` field
+- **THEN** the task in output does not include `spec` field
+- **AND** task's `acceptanceCriteria` is used for verification
