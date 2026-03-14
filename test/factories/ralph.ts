@@ -5,6 +5,7 @@ export interface PrdTask {
   passes: boolean;
   description?: string;
   acceptanceCriteria?: string[];
+  spec?: string;
   dependsOn?: string[];
   notes?: string;
 }

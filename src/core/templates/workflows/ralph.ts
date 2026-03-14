@@ -40,6 +40,7 @@ I'll work through the prd.json tasks one at a time:
    - design.md: Understand the HOW (if exists)
    - specs/**/*.md: Understand requirements
    - prd.json: Current task states
+   - **If selected task has \`spec\` field:** Read the referenced spec file for acceptance criteria
 
 3. **Identify next task**
    - Find tasks where \`passes: false\`
@@ -48,8 +49,14 @@ I'll work through the prd.json tasks one at a time:
 
 4. **Implement the task**
    - Follow the task's \`description\` and \`acceptanceCriteria\`
+   - **If task has \`spec\` field:**
+     - Read the spec file referenced by \`task.spec\` (format: \`specs/<capability>/spec.md#REQ-ID\`)
+     - Find the requirement section matching the REQ-ID
+     - Verify all scenarios in the requirement pass
+     - Also verify all \`acceptanceCriteria\` (supplementary checks)
+   - **If task has no \`spec\` field:**
+     - Use \`acceptanceCriteria\` as the complete verification list
    - Make minimal, focused changes
-   - Ensure each acceptance criterion is satisfied
    - Run typecheck/tests to verify
 
 5. **Update prd.json**
@@ -125,6 +132,7 @@ I'll work through the prd.json tasks one at a time:
    - design.md: Understand the HOW
    - specs/**/*.md: Understand requirements
    - prd.json: Current task states
+   - **If selected task has \`spec\` field:** Read the referenced spec file for acceptance criteria
 
 3. **Identify next task**
    - Find tasks where \`passes: false\`
@@ -133,8 +141,14 @@ I'll work through the prd.json tasks one at a time:
 
 4. **Implement the task**
    - Follow the task's description and acceptanceCriteria
+   - **If task has \`spec\` field:**
+     - Read the spec file referenced by \`task.spec\` (format: \`specs/<capability>/spec.md#REQ-ID\`)
+     - Find the requirement section matching the REQ-ID
+     - Verify all scenarios in the requirement pass
+     - Also verify all \`acceptanceCriteria\` (supplementary checks)
+   - **If task has no \`spec\` field:**
+     - Use \`acceptanceCriteria\` as the complete verification list
    - Make minimal, focused changes
-   - Ensure each acceptance criterion is satisfied
 
 5. **Update prd.json**
    - Set \`passes: true\` for the completed task

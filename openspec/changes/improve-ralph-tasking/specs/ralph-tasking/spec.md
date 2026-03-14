@@ -49,3 +49,20 @@ The system SHALL include the `spec` field in tasks array output when generating 
 - **WHEN** a task in prd.json has no `spec` field
 - **THEN** the task in output does not include `spec` field
 - **AND** task's `acceptanceCriteria` is used for verification
+
+### Requirement: REQ-004 Template generator includes spec logic
+
+The system SHALL include spec conditional verification logic in the Ralph skill template generator.
+
+#### Scenario: Generated skill includes spec logic
+
+- **WHEN** `openspec init --schema ralph-driven` is executed
+- **THEN** the generated SKILL.md includes spec conditional logic
+- **AND** the skill instructs to read spec file when task.spec is present
+- **AND** the skill instructs to use acceptanceCriteria when task.spec is absent
+
+#### Scenario: Template source is authoritative
+
+- **WHEN** the skill template in `src/core/templates/workflows/ralph.ts` is updated
+- **THEN** running `openspec init` regenerates skill files with the new content
+- **AND** all AI tools receive consistent skill definitions

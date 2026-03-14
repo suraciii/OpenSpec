@@ -15,6 +15,7 @@ export interface TaskItem {
   done: boolean;
   priority?: number;
   acceptanceCriteria?: string[];
+  spec?: string;
 }
 
 export interface TaskParser {
@@ -69,6 +70,7 @@ export class MarkdownTaskParser implements TaskParser {
 interface PrdTask {
   id?: string;
   title?: string;
+  spec?: string;
   description?: string;
   passes?: boolean;
   priority?: number;
@@ -103,7 +105,8 @@ export class PrdJsonTaskParser implements TaskParser {
         description: task.title || task.description || '',
         done: task.passes === true,
         priority: task.priority,
-        acceptanceCriteria: task.acceptanceCriteria
+        acceptanceCriteria: task.acceptanceCriteria,
+        spec: task.spec
       }));
     } catch {
       return [];

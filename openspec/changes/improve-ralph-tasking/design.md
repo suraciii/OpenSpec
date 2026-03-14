@@ -131,13 +131,41 @@ return prd.tasks.map((task) => ({
 | 用户不理解新语义 | 文档说明 + prd.json 模板注释 |
 | LLM 选错 task | 信任 LLM，priority 字段提供指导 |
 
+## 发现的问题
+
+### P1: 模板生成器未同步 ✅ 已修复
+
+**问题描述：**
+T-006 更新了 `.opencode/skills/opsx-ralph/SKILL.md`（生成产物），但未更新源模板 `src/core/templates/workflows/ralph.ts`。
+
+**影响：**
+- `.opencode/` 在 `.gitignore` 中，修改不会被提交
+- 用户运行 `openspec init` 后，SKILL.md 会被旧模板覆盖
+- spec 条件验证逻辑丢失
+
+**文件关系：**
+```
+src/core/templates/workflows/ralph.ts (源模板，git tracked)
+    │
+    │  openspec init
+    ▼
+.opencode/skills/opsx-ralph/SKILL.md (生成产物，git ignored)
+```
+
+**当前状态：**
+- `ralph.ts`: ✅ 有 spec 条件逻辑 (T-008 已修复)
+- `SKILL.md`: ✅ 有 spec 条件逻辑 (由 init 生成)
+
+**修复方案：** ~~同步更新 `src/core/templates/workflows/ralph.ts`，将 spec 条件逻辑添加到 `getOpsxRalphSkillTemplate()` 和 `getOpsxRalphCommandTemplate()` 中。~~ ✅ 已完成
+
 ## Migration Plan
 
-1. 更新 prd.json 模板，添加 `spec` 字段示例和注释
-2. 更新 schema.yaml 的 prd instruction，说明新用法
-3. 更新 TaskItem 接口添加 `spec` 字段
-4. 修改 `parsePrdForRalph()` 保留 `spec` 字段
-5. 更新 instruction 文本引用 tasks 数组
-6. 更新 opsx-ralph skill 读取 task.spec
+1. ~~更新 prd.json 模板，添加 `spec` 字段示例和注释~~ ✅
+2. ~~更新 schema.yaml 的 prd instruction，说明新用法~~ ✅
+3. ~~更新 TaskItem 接口添加 `spec` 字段~~ ✅
+4. ~~修改 `parsePrdForRalph()` 保留 `spec` 字段~~ ✅
+5. ~~更新 instruction 文本引用 tasks 数组~~ ✅
+6. ~~更新 opsx-ralph skill 读取 task.spec~~ ✅ (生成产物，需同步模板)
+7. **同步模板生成器** - 更新 `src/core/templates/workflows/ralph.ts`
 
 无需迁移现有 prd.json 文件 - 它们继续工作。
