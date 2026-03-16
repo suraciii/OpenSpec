@@ -54,7 +54,7 @@ podman run --rm -it \
     -e OPENCODE_MODEL="${OPENCODE_MODEL:-zhipuai-coding-plan}" \
     -v "${SCRIPT_DIR}/fixtures/opencode-config.json:/home/opentest/.config/opencode/opencode.json:ro,Z" \
     -v "${SCRIPT_DIR}/fixtures/auth.json:/home/opentest/.local/share/opencode/auth.json:ro,Z" \
-    -v "${SCRIPT_DIR}/VERIFICATION.md:/app/TESTPLAN.md:ro,Z" \
+    -v "${SCRIPT_DIR}/TESTPLAN.md:/app/TESTPLAN.md:ro,Z" \
     -v "${PROJECT_ROOT}:/opt/openspec:ro,Z" \
     -w /app \
     "${IMAGE_NAME}" \
