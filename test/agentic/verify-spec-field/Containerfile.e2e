@@ -1,0 +1,40 @@
+# test/e2e/Containerfile.e2e
+# E2E test container with OpenSpec and OpenCode
+
+FROM node:20-slim
+
+# Install dependencies
+RUN apt-get update && apt-get install -y \
+    git \
+    curl \
+    jq \
+    && rm -rf /var/lib/apt/lists/*
+
+# Create user matching host UID/GID
+ARG USER_ID=1000
+ARG GROUP_ID=1000
+RUN groupadd -g ${GROUP_ID} opentest && \
+    useradd -u ${USER_ID} -g opentest -m -s /bin/bash opentest
+
+# Install OpenCode globally
+RUN npm install -g opencode
+
+# Copy and install OpenSpec from source
+COPY --chown=opentest:opentest . /opt/openspec-src
+WORKDIR /opt/openspec-src
+RUN npm ci && npm run build && npm link
+
+# Create config directories
+RUN mkdir -p /home/opentest/.config/opencode \
+    && mkdir -p /home/opentest/.local/share/opencode \
+    && chown -R opentest:opentest /home/opentest
+
+# Create workspace
+RUN mkdir -p /app/test-workspace \
+    && chown -R opentest:opentest /app
+
+USER opentest
+WORKDIR /app
+
+# Default: show help
+CMD ["opencode", "--help"]
