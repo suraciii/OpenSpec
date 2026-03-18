@@ -1,77 +1,127 @@
 # Agentic Testing
 
-Agentic Testing is a paradigm where AI Agents (like OpenCode, Claude, etc.) execute test plans as intelligent actors rather than following rigid scripts.
+AI Agents execute test plans as intelligent actors rather than following rigid scripts.
 
 ## Philosophy
 
-Traditional E2E tests:
-- Hard-coded assertions: `assertEquals(actual, expected)`
-- Brittle selectors: `await page.click('#btn-submit')`
-- Deterministic execution paths
+**Traditional E2E:**
+- Hard-coded assertions
+- Brittle selectors
+- Deterministic paths
 
-Agentic Tests:
-- Natural language instructions: "Verify that the power function handles edge cases"
-- Flexible verification: LLM understands intent, tolerates format variations
-- Adaptive execution: Agent can handle unexpected states intelligently
+**Agentic Tests:**
+- Natural language instructions
+- Flexible verification (LLM understands intent)
+- Adaptive execution (handles unexpected states)
 
 ## Structure
 
 ```
 test/agentic/
 ├── README.md                    # This file
-├── verify-spec-field/          # Test scenario: spec field integration
-│   ├── TESTPLAN.md             # Natural language test plan for Agent
-│   ├── Containerfile           # Isolated test environment
-│   ├── run.sh                  # Launch script
-│   └── fixtures/               # Test configuration
-├── verify-<feature>/           # Future test scenarios
-└── ...
+├── shared/
+│   ├── Containerfile            # Universal container
+│   └── fixtures/                # Shared OpenCode config
+│       ├── opencode-config.json
+│       └── auth.json
+└── verify-<feature>/
+    └── TESTPLAN.md              # Test content (agent instructions)
 ```
-
-## How It Works
-
-1. **Test Plan**: Written in natural language (markdown) with clear goals and verification criteria
-2. **Container**: Provides isolated environment with OpenSpec + Agent tools
-3. **Agent Execution**: LLM reads test plan, executes steps, makes judgments
-4. **Reporting**: Agent outputs structured results with reasoning
 
 ## Running Tests
 
 ```bash
-# Set API key
-export OPENCODE_API_KEY="sk-..."
+# 1. Set API key
+export OPENCODE_API_KEY="sk-xxx"
 
-# Run specific test
-cd test/agentic/verify-spec-field
-./run.sh
+# 2. Build image (first time)
+podman build -t openspec-agentic-test \
+  --build-arg USER_ID=$(id -u) \
+  --build-arg GROUP_ID=$(id -g) \
+  -f test/agentic/shared/Containerfile \
+  .
 
-# Or run manually
-podman run -it openspec-agentic-test opencode
-# Then read TESTPLAN.md and execute
+# 3. Run test
+podman run --rm -it \
+  --user $(id -u):$(id -g) \
+  -e OPENCODE_API_KEY="${OPENCODE_API_KEY}" \
+  -v "$(pwd)/test/agentic/verify-<feature>/TESTPLAN.md:/app/TESTPLAN.md:ro,Z" \
+  -v "$(pwd)/test/agentic/shared/fixtures/opencode-config.json:/home/opentest/.config/opencode/opencode.json:ro,Z" \
+  -v "$(pwd)/test/agentic/shared/fixtures/auth.json:/home/opentest/.local/share/opencode/auth.json:ro,Z" \
+  -v "$(pwd):/opt/openspec:ro,Z" \
+  -w /app \
+  openspec-agentic-test \
+  opencode run --file /app/TESTPLAN.md
 ```
 
-## When to Use
+## Creating a New Test
 
-Use Agentic Testing when:
-- Testing complex workflows with multiple decision points
-- Verification requires semantic understanding (not exact string matching)
-- System behavior is non-deterministic (AI-powered features)
-- Test maintenance cost of traditional E2E is too high
+1. Create directory: `mkdir -p test/agentic/verify-<feature>`
+2. Write `TESTPLAN.md` with:
+   - Test scenario description
+   - Phases with steps and verification points
+   - Success criteria
+   - Report template
+
+### Test Plan Template
+
+```markdown
+# Test Plan: <Feature>
+
+## Test Scenario
+
+<What you're testing>
+
+## Prerequisites
+
+Container environment with:
+- Node.js, npm
+- OpenSpec CLI
+- OpenCode CLI with API access
+- Working directory: `/app/workspace`
+
+---
+
+## Phase 1: <Name>
+
+**What to do**:
+```bash
+# Commands for agent
+```
+
+**Verification**:
+- Check points
+
+---
+
+## Success Criteria
+
+Test is **PASSED** if:
+1. ✅ Criterion 1
+2. ✅ Criterion 2
+
+---
+
+## Reporting
+
+Output structured report after all phases.
+```
 
 ## Best Practices
 
-1. **Clear Intent**: Test plans should explain WHAT to verify, not HOW
-2. **Phased Approach**: Break complex tests into logical phases
-3. **Observable State**: Provide commands to check system state
-4. **Flexible Assertions**: Let Agent judge success based on intent, not exact values
-5. **Idempotent**: Tests should clean up or use fresh containers
+1. **Clear Intent**: Explain WHAT to verify, not HOW
+2. **Phased Approach**: Break complex tests into phases
+3. **Observable State**: Provide commands to check state
+4. **Flexible Assertions**: Let Agent judge success
 
-## Example
+## Shared Resources
 
-See `verify-spec-field/TESTPLAN.md` for a complete example testing the Ralph spec field integration.
+**Containerfile** provides:
+- Node.js 20
+- OpenCode CLI
+- OpenSpec from source
+- Workspace at `/app/workspace`
 
-## Future Directions
-
-- Self-healing tests: Agent suggests test plan updates when code changes
-- Test generation: Agent creates test plans from code changes
-- Multi-agent testing: Multiple Agents test concurrently and compare results
+**Fixtures** (`shared/fixtures/`):
+- `opencode-config.json` - Minimal config
+- `auth.json` - API key from env (`{env:OPENCODE_API_KEY}`)

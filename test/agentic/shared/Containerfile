@@ -1,5 +1,5 @@
-# test/e2e/Containerfile.e2e
-# E2E test container with OpenSpec and OpenCode
+# test/agentic/shared/Containerfile
+# Agentic test container with OpenSpec and OpenCode
 
 FROM node:20-slim
 
@@ -24,13 +24,13 @@ COPY --chown=opentest:opentest . /opt/openspec-src
 WORKDIR /opt/openspec-src
 RUN npm ci && npm run build && npm link
 
-# Create config directories
+# Create OpenCode config directories
 RUN mkdir -p /home/opentest/.config/opencode \
     && mkdir -p /home/opentest/.local/share/opencode \
     && chown -R opentest:opentest /home/opentest
 
-# Create workspace
-RUN mkdir -p /app/test-workspace \
+# Create workspace directory (where tests run)
+RUN mkdir -p /app/workspace \
     && chown -R opentest:opentest /app
 
 USER opentest
