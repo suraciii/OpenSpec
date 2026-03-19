@@ -31,7 +31,8 @@ RUN export http_proxy=$HTTP_PROXY && \
     export https_proxy=$HTTPS_PROXY && \
     curl -fsSL https://opencode.ai/install | bash && \
     npm install -g pnpm && \
-    ln -sf $HOME/.opencode/bin/opencode /usr/local/bin/opencode
+    cp /root/.opencode/bin/opencode /usr/local/bin/opencode && \
+    chmod 755 /usr/local/bin/opencode
 
 # Copy and install OpenSpec from source
 COPY --chown=opentest:opentest . /opt/openspec-src
