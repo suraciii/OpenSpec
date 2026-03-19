@@ -13,11 +13,25 @@ RUN apt-get update && apt-get install -y \
 # Create user matching host UID/GID
 ARG USER_ID=1000
 ARG GROUP_ID=1000
-RUN groupadd -g ${GROUP_ID} opentest && \
-    useradd -u ${USER_ID} -g opentest -m -s /bin/bash opentest
+RUN if ! getent group ${GROUP_ID} > /dev/null 2>&1; then \
+        groupadd -g ${GROUP_ID} opentest; \
+    else \
+        groupadd opentest; \
+    fi && \
+    if ! getent passwd ${USER_ID} > /dev/null 2>&1; then \
+        useradd -u ${USER_ID} -g opentest -m -s /bin/bash opentest; \
+    else \
+        useradd -g opentest -m -s /bin/bash opentest; \
+    fi
 
-# Install OpenCode globally
-RUN npm install -g opencode
+# Install OpenCode CLI and pnpm
+ARG HTTP_PROXY
+ARG HTTPS_PROXY
+RUN export http_proxy=$HTTP_PROXY && \
+    export https_proxy=$HTTPS_PROXY && \
+    curl -fsSL https://opencode.ai/install | bash && \
+    npm install -g pnpm && \
+    ln -sf $HOME/.opencode/bin/opencode /usr/local/bin/opencode
 
 # Copy and install OpenSpec from source
 COPY --chown=opentest:opentest . /opt/openspec-src
@@ -34,18 +48,8 @@ RUN mkdir -p /app/workspace \
     && chown -R opentest:opentest /app
 
 # Create entrypoint that generates auth.json from env
-RUN cat > /entrypoint.sh << 'EOF' && chmod +x /entrypoint.sh
-#!/bin/bash
-set -e
-MODEL="${OPENCODE_MODEL:-zhipuai-coding-plan}"
-if [ -n "$OPENCODE_API_KEY" ]; then
-  mkdir -p /home/opentest/.local/share/opencode
-  jq -n --arg model "$MODEL" --arg key "$OPENCODE_API_KEY" \
-    '{($model): {type: "api", key: $key}}' \
-    > /home/opentest/.local/share/opencode/auth.json
-fi
-exec "$@"
-EOF
+COPY test/agentic/shared/entrypoint.sh /entrypoint.sh
+RUN chmod +x /entrypoint.sh
 
 USER opentest
 WORKDIR /app
