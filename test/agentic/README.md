@@ -19,11 +19,11 @@ AI Agents execute test plans as intelligent actors rather than following rigid s
 ```
 test/agentic/
 ├── README.md                    # This file
+├── AGENTS.md                    # Context for OpenCode
 ├── shared/
 │   ├── Containerfile            # Universal container
-│   └── fixtures/                # Shared OpenCode config
-│       ├── opencode-config.json
-│       └── auth.json
+│   └── fixtures/
+│       └── opencode-config.json # Test-specific config
 └── verify-<feature>/
     └── TESTPLAN.md              # Test content (agent instructions)
 ```
@@ -31,23 +31,23 @@ test/agentic/
 ## Running Tests
 
 ```bash
-# 1. Set API key
-export OPENCODE_API_KEY="sk-xxx"
+# Option 1: Using skill (recommended)
+opencode run --skill execute-agentic-test -- verify-<feature>
 
-# 2. Build image (first time)
+# Option 2: Manual
+# API key is read from ~/.local/share/opencode/auth.json
 podman build -t openspec-agentic-test \
   --build-arg USER_ID=$(id -u) \
   --build-arg GROUP_ID=$(id -g) \
   -f test/agentic/shared/Containerfile \
   .
 
-# 3. Run test
 podman run --rm -it \
   --user $(id -u):$(id -g) \
-  -e OPENCODE_API_KEY="${OPENCODE_API_KEY}" \
+  -e OPENCODE_API_KEY="$(jq -r '.["zhipuai-coding-plan"].key' ~/.local/share/opencode/auth.json)" \
+  -e OPENCODE_MODEL="zhipuai-coding-plan" \
   -v "$(pwd)/test/agentic/verify-<feature>/TESTPLAN.md:/app/TESTPLAN.md:ro,Z" \
   -v "$(pwd)/test/agentic/shared/fixtures/opencode-config.json:/home/opentest/.config/opencode/opencode.json:ro,Z" \
-  -v "$(pwd)/test/agentic/shared/fixtures/auth.json:/home/opentest/.local/share/opencode/auth.json:ro,Z" \
   -v "$(pwd):/opt/openspec:ro,Z" \
   -w /app \
   openspec-agentic-test \
@@ -121,7 +121,7 @@ Output structured report after all phases.
 - OpenCode CLI
 - OpenSpec from source
 - Workspace at `/app/workspace`
+- Generates auth.json from `OPENCODE_API_KEY` and `OPENCODE_MODEL` env vars at runtime
 
 **Fixtures** (`shared/fixtures/`):
-- `opencode-config.json` - Minimal config
-- `auth.json` - API key from env (`{env:OPENCODE_API_KEY}`)
+- `opencode-config.json` - Minimal test-specific config (no MCP, no skills)
