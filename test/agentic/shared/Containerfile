@@ -1,0 +1,56 @@
+# test/agentic/shared/Containerfile
+# Agentic test container with OpenSpec and OpenCode
+
+FROM node:20-slim
+
+# Install dependencies
+RUN apt-get update && apt-get install -y \
+    git \
+    curl \
+    jq \
+    && rm -rf /var/lib/apt/lists/*
+
+# Create user matching host UID/GID
+ARG USER_ID=1000
+ARG GROUP_ID=1000
+RUN if ! getent group ${GROUP_ID} > /dev/null 2>&1; then \
+        groupadd -g ${GROUP_ID} opentest; \
+    else \
+        groupadd opentest; \
+    fi && \
+    if ! getent passwd ${USER_ID} > /dev/null 2>&1; then \
+        useradd -u ${USER_ID} -g opentest -m -s /bin/bash opentest; \
+    else \
+        useradd -g opentest -m -s /bin/bash opentest; \
+    fi
+
+# Copy pre-downloaded OpenCode CLI binary
+COPY test/agentic/shared/bin/opencode /usr/local/bin/opencode
+RUN chmod 755 /usr/local/bin/opencode
+
+# Install pnpm
+RUN npm install -g pnpm
+
+# Copy and install OpenSpec from source
+COPY --chown=opentest:opentest . /opt/openspec-src
+WORKDIR /opt/openspec-src
+RUN npm ci && npm run build && npm link
+
+# Create OpenCode config directories
+RUN mkdir -p /home/opentest/.config/opencode \
+    && mkdir -p /home/opentest/.local/share/opencode \
+    && chown -R opentest:opentest /home/opentest
+
+# Create workspace directory (where tests run)
+RUN mkdir -p /app/workspace \
+    && chown -R opentest:opentest /app
+
+# Create entrypoint that generates auth.json from env
+COPY test/agentic/shared/entrypoint.sh /entrypoint.sh
+RUN chmod +x /entrypoint.sh
+
+USER opentest
+WORKDIR /app
+
+ENTRYPOINT ["/entrypoint.sh"]
+CMD ["opencode", "--help"]

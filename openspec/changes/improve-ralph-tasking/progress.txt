@@ -1,0 +1,213 @@
+## 2026-03-15 - T-001
+
+**Task**: Update prd.json template with spec field
+
+**What was implemented**:
+- Modified `schemas/ralph-driven/templates/prd.json`
+- Added optional `spec` field with example value "specs/example/spec.md#REQ-001"
+- Simplified acceptanceCriteria to show supplementary checks pattern ("Criterion 1", "Typecheck passes")
+- Kept backward compatible structure
+
+**Files changed**:
+- schemas/ralph-driven/templates/prd.json
+
+**Learnings for future iterations**:
+- Template should show the new spec field pattern clearly
+- acceptanceCriteria examples should reflect "supplementary checks" semantics
+- JSON structure must remain valid
+
+---
+
+## 2026-03-15 - T-002
+
+**Task**: Update schema.yaml prd instruction
+
+**What was implemented**:
+- Updated `schemas/ralph-driven/schema.yaml` prd instruction
+- Added documentation for `spec` field (optional reference to spec requirement)
+- Documented acceptanceCriteria semantics:
+  * With `spec`: primary criteria from requirement scenarios, acceptanceCriteria as supplementary
+  * Without `spec`: acceptanceCriteria represents ALL verification items
+- Added requirement that ALL tasks must have verifiable acceptance criteria
+- Updated example task to show new structure with `spec` field
+
+**Files changed**:
+- schemas/ralph-driven/schema.yaml
+
+**Learnings for future iterations**:
+- Instruction documentation should clearly explain the dual semantics of acceptanceCriteria
+- Examples in templates/guides are crucial for adoption
+- Keeping examples concise but illustrative helps users understand the pattern
+
+---
+
+## 2026-03-15 - T-003
+
+**Task**: Add spec field to TaskItem interface
+
+**What was implemented**:
+- Updated `src/utils/task-progress.ts`
+- Added `spec?: string` to `TaskItem` interface (line 18)
+- Added `spec?: string` to `PrdTask` interface (line 72)
+- Updated `PrdJsonTaskParser.parseTasks()` to include `spec: task.spec` in output
+- TypeScript compiles successfully
+
+**Files changed**:
+- src/utils/task-progress.ts
+
+**Learnings for future iterations**:
+- Interface changes need to be propagated to all related types
+- Parser methods need to preserve new fields from source data
+- Optional fields (using `?`) maintain backward compatibility
+
+---
+
+## 2026-03-15 - T-004
+
+**Task**: Preserve spec field in parsePrdForRalph
+
+**What was implemented**:
+- Updated `src/commands/workflow/instructions.ts`
+- Added `spec?: string` to `RalphTask` interface (line 45)
+- Updated `parsePrdForRalph()` to include `spec: task.spec` in output (line 493)
+- TypeScript compiles successfully
+- All ralph-instructions tests pass (7/7)
+
+**Files changed**:
+- src/commands/workflow/instructions.ts
+
+**Learnings for future iterations**:
+- The spec field is optional and simply passed through from prd.json
+- Backward compatibility is maintained - tasks without spec field continue to work
+- Tests in test/commands/ralph-instructions.test.ts verify the parsing works correctly
+
+---
+
+## 2026-03-15 - T-005
+
+**Task**: Update instruction text
+
+**What was implemented**:
+- Updated `src/commands/workflow/instructions.ts`
+- Changed instruction text from "Read prd.json to find the highest priority pending task" to "Select a pending task (done: false) from tasks array"
+- Aligns with design decision D5: instruction should reference tasks array directly
+- TypeScript compiles successfully
+- All ralph-instructions tests pass (7/7)
+
+**Files changed**:
+- src/commands/workflow/instructions.ts (line 536)
+
+**Learnings for future iterations**:
+- Instruction text is now consistent with the JSON output which includes a tasks array
+- LLM can select tasks directly from the provided tasks array without needing to read prd.json
+- This change supports the design principle that CLI outputs structured data and LLM makes decisions
+
+---
+
+## 2026-03-15 - T-006
+
+**Task**: Update opsx-ralph skill
+
+**What was implemented**:
+- Updated `.opencode/skills/opsx-ralph/SKILL.md`
+- Added step 2: Read spec file when task has `spec` field
+- Updated step 4: Added conditional verification logic:
+  * With `spec`: Read spec file, verify all scenarios, also verify acceptanceCriteria
+  * Without `spec`: Use acceptanceCriteria as complete verification list
+- Skill now reads `task.spec` (format: `specs/<capability>/spec.md#REQ-ID`)
+- TypeScript compiles successfully
+- All ralph-instructions tests pass (7/7)
+
+**Files changed**:
+- .opencode/skills/opsx-ralph/SKILL.md (lines 43, 50-60)
+
+**Learnings for future iterations**:
+- Skill should guide LLM to read spec files for acceptance criteria when available
+- Dual verification path (spec scenarios + acceptanceCriteria) ensures comprehensive testing
+- Backward compatibility maintained - tasks without spec work unchanged
+
+---
+
+## 2026-03-15 - T-007
+
+**Task**: Add tests
+
+**What was implemented**:
+- Added `spec?: string` to `PrdTask` interface in `test/factories/ralph.ts`
+- Added two new tests in `test/commands/ralph-instructions.test.ts`:
+  1. `includes spec field in task output when present in prd.json` - verifies spec field is passed through
+  2. `maintains backward compatibility for tasks without spec field` - verifies tasks without spec work correctly
+- Rebuilt dist folder (required sudo due to root-owned files)
+- All 9 tests pass
+
+**Files changed**:
+- test/factories/ralph.ts (line 9)
+- test/commands/ralph-instructions.test.ts (lines 186-220)
+
+**Learnings for future iterations**:
+- Tests verify both presence and absence of spec field
+- Backward compatibility tests ensure existing prd.json files continue to work
+- Build step required before running CLI-based tests
+
+---
+
+## 2026-03-15 - Review 发现问题
+
+**Task**: 实现审查
+
+**发现的问题：**
+T-006 更新了 `.opencode/skills/opsx-ralph/SKILL.md`（生成产物），但未更新源模板 `src/core/templates/workflows/ralph.ts`。
+
+**问题影响：**
+- `.opencode/` 在 `.gitignore` 中，SKILL.md 的修改不会被提交
+- 用户运行 `openspec init` 后，SKILL.md 会被旧模板覆盖
+- spec 条件验证逻辑会丢失
+
+**差异对比：**
+| 文件 | spec 条件逻辑 |
+|------|---------------|
+| `ralph.ts` (模板) | ❌ 无 |
+| `SKILL.md` (生成) | ✅ 有 |
+
+**修复方案：**
+新增 T-008 任务 - 同步更新 `src/core/templates/workflows/ralph.ts`
+
+**Learnings for future iterations:**
+- 生成产物（.opencode/ 下的文件）不应直接修改
+- 应修改源模板，然后重新生成
+- .gitignore 中的文件不会被 git 追踪
+
+---
+
+## 2026-03-15 - T-008
+
+**Task**: Sync template generator with spec logic
+
+**What was implemented:**
+- Updated `src/core/templates/workflows/ralph.ts`
+- Added spec conditional logic to `getOpsxRalphSkillTemplate()`:
+  * Step 2: Added "If selected task has spec field: Read the referenced spec file"
+  * Step 4: Added conditional verification logic for spec vs no-spec tasks
+- Added spec conditional logic to `getOpsxRalphCommandTemplate()`:
+  * Step 2: Added spec file reference guidance
+  * Step 4: Added conditional verification logic
+- Ran `openspec init --schema ralph-driven --force` to regenerate skills
+- Verified generated `.opencode/skills/opsx-ralph/SKILL.md` contains spec logic
+- All 9 tests pass
+
+**Files changed:**
+- src/core/templates/workflows/ralph.ts
+
+**Verification:**
+- `grep "If task has" .opencode/skills/opsx-ralph/SKILL.md` shows spec logic
+- `grep "If selected task" .opencode/skills/opsx-ralph/SKILL.md` shows spec reference
+- Tests: 9/9 pass
+
+**Learnings for future iterations:**
+- Template generator is the single source of truth for skill definitions
+- Always modify source template, never generated files
+- Use `openspec init --force` to regenerate after template changes
+
+---
+
+<promise>COMPLETE</promise>

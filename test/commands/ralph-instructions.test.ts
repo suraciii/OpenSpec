@@ -183,5 +183,43 @@ describe('ralph instructions command', () => {
       expect(output.contextFiles.specs).toBeDefined();
       expect(output.contextFiles.specs).toMatch(/specs/);
     });
+
+    it('includes spec field in task output when present in prd.json', async () => {
+      const prdData = createOpenPrdData(2);
+      prdData.tasks[0].spec = 'specs/test-capability/spec.md#REQ-001';
+      prdData.tasks[1].spec = 'specs/test-capability/spec.md#REQ-002';
+      
+      await createRalphDrivenChange('test-spec-field', { prdData });
+      const result = await runCLI(
+        ['instructions', 'ralph', '--change', 'test-spec-field', '--json'],
+        { cwd: tempDir }
+      );
+      expect(result.exitCode).toBe(0);
+      const output = JSON.parse(extractJson(getOutput(result)));
+      
+      expect(output.tasks).toHaveLength(2);
+      expect(output.tasks[0].spec).toBe('specs/test-capability/spec.md#REQ-001');
+      expect(output.tasks[1].spec).toBe('specs/test-capability/spec.md#REQ-002');
+    });
+
+    it('maintains backward compatibility for tasks without spec field', async () => {
+      const prdData = createOpenPrdData(2);
+      delete prdData.tasks[0].spec;
+      delete prdData.tasks[1].spec;
+      
+      await createRalphDrivenChange('test-no-spec-field', { prdData });
+      const result = await runCLI(
+        ['instructions', 'ralph', '--change', 'test-no-spec-field', '--json'],
+        { cwd: tempDir }
+      );
+      expect(result.exitCode).toBe(0);
+      const output = JSON.parse(extractJson(getOutput(result)));
+      
+      expect(output.tasks).toHaveLength(2);
+      expect(output.tasks[0]).not.toHaveProperty('spec');
+      expect(output.tasks[1]).not.toHaveProperty('spec');
+      expect(output.progress.total).toBe(2);
+      expect(output.progress.remaining).toBe(2);
+    });
   });
 });

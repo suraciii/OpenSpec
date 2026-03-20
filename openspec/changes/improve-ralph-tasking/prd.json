@@ -1,0 +1,103 @@
+{
+  "project": "OpenSpec",
+  "description": "Improve ralph-driven tasking with spec references",
+  "tasks": [
+    {
+      "id": "T-001",
+      "title": "Update prd.json template with spec field",
+      "spec": "specs/ralph-tasking/spec.md#REQ-001",
+      "description": "Add optional `spec` field to schemas/ralph-driven/templates/prd.json with example and comments",
+      "acceptanceCriteria": [
+        "Template JSON is valid",
+        "Typecheck passes"
+      ],
+      "priority": 1,
+      "passes": true
+    },
+    {
+      "id": "T-002",
+      "title": "Update schema.yaml prd instruction",
+      "spec": "specs/ralph-tasking/spec.md#REQ-002",
+      "description": "Update schemas/ralph-driven/schema.yaml to document new acceptanceCriteria semantics and require testable criteria",
+      "acceptanceCriteria": [
+        "Instruction explains acceptanceCriteria semantics",
+        "Instruction requires testable criteria",
+        "Typecheck passes"
+      ],
+      "priority": 2,
+      "passes": true
+    },
+    {
+      "id": "T-003",
+      "title": "Add spec field to TaskItem interface",
+      "description": "Update src/utils/task-progress.ts TaskItem and PrdTask interfaces to include optional `spec` field",
+      "acceptanceCriteria": [
+        "TypeScript compiles",
+        "Typecheck passes"
+      ],
+      "priority": 3,
+      "passes": true
+    },
+    {
+      "id": "T-004",
+      "title": "Preserve spec field in parsePrdForRalph",
+      "spec": "specs/ralph-tasking/spec.md#REQ-003",
+      "description": "Update parsePrdForRalph() in src/commands/workflow/instructions.ts to include `spec` field in output",
+      "acceptanceCriteria": [
+        "Tasks array includes spec field when present",
+        "Backward compatible with tasks without spec",
+        "Tests pass"
+      ],
+      "priority": 4,
+      "passes": true
+    },
+    {
+      "id": "T-005",
+      "title": "Update instruction text",
+      "description": "Update instruction in generateRalphInstructions() to reference tasks array directly instead of 'read prd.json to find task'",
+      "acceptanceCriteria": [
+        "Instruction references tasks array",
+        "Typecheck passes"
+      ],
+      "priority": 5,
+      "passes": true
+    },
+    {
+      "id": "T-006",
+      "title": "Update opsx-ralph skill",
+      "description": "Update .opencode/skills/opsx-ralph/SKILL.md to read spec file from task.spec when present, verify scenarios + acceptanceCriteria",
+      "acceptanceCriteria": [
+        "Skill reads task.spec when present",
+        "Skill verifies spec scenarios",
+        "Skill verifies acceptanceCriteria",
+        "Typecheck passes"
+      ],
+      "priority": 6,
+      "passes": true
+    },
+    {
+      "id": "T-007",
+      "title": "Add tests",
+      "description": "Add tests for Ralph instructions with spec field in test/commands/workflow/instructions.test.ts or similar",
+      "acceptanceCriteria": [
+        "Test task with spec includes spec in output",
+        "Test backward compatibility without spec",
+        "All tests pass"
+      ],
+      "priority": 7,
+      "passes": true
+    },
+    {
+      "id": "T-008",
+      "title": "Sync template generator with spec logic",
+      "description": "Update src/core/templates/workflows/ralph.ts to include spec conditional verification logic in getOpsxRalphSkillTemplate() and getOpsxRalphCommandTemplate()",
+      "acceptanceCriteria": [
+        "Template includes spec conditional logic",
+        "openspec init regenerates SKILL.md with spec logic",
+        "Tests pass"
+      ],
+      "priority": 8,
+      "passes": true
+    }
+  ]
+}

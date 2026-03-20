@@ -127,28 +127,33 @@ artifacts:
       Guidelines:
       - Each task should be completable in ONE Ralph iteration
       - Tasks are smallest independently testable units that deliver value
-      - Include acceptance criteria extracted from specs
       - Order tasks by priority (lower number = higher priority)
       - Earlier tasks MUST NOT depend on later tasks
 
       Task structure:
       - `id`: Task identifier (T-001, T-002, etc.)
       - `title`: Short task title
+      - `spec`: Optional reference to spec requirement (e.g., "specs/auth/spec.md#REQ-001")
       - `description`: What to implement (2-3 sentences)
-      - `acceptanceCriteria`: Array of verification criteria (include "Tests pass" or "Typecheck passes")
+      - `acceptanceCriteria`: Array of verification criteria
       - `priority`: Execution order (1, 2, 3, ...)
       - `passes`: Boolean indicating completion (starts as false)
       - `notes`: Optional implementation notes
+
+      **acceptanceCriteria semantics:**
+      - With `spec`: Scenarios from the referenced requirement are primary acceptance criteria.
+        `acceptanceCriteria` serves as additional/supplementary checks (e.g., "Tests pass", "Typecheck passes").
+      - Without `spec`: `acceptanceCriteria` represents ALL verification items.
+      - ALL tasks must have verifiable acceptance criteria that prove the capability works.
 
       Example task:
       ```json
       {
         "id": "T-001",
         "title": "Create schema definition",
+        "spec": "specs/core/spec.md#REQ-001",
         "description": "Create schemas/ralph-driven/schema.yaml with artifact definitions and apply configuration.",
         "acceptanceCriteria": [
-          "Schema file exists at schemas/ralph-driven/schema.yaml",
-          "Schema defines all required artifacts",
           "Typecheck passes"
         ],
         "priority": 1,

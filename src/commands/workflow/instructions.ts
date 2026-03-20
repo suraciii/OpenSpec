@@ -42,6 +42,7 @@ export interface RalphTask {
   acceptanceCriteria: string[];
   priority: number;
   done: boolean;
+  spec?: string;
 }
 
 export interface RalphInstructions {
@@ -489,6 +490,7 @@ function parsePrdForRalph(content: string): RalphTask[] {
       acceptanceCriteria: task.acceptanceCriteria || [],
       priority: task.priority ?? 999,
       done: task.passes === true,
+      spec: task.spec,
     }));
   } catch {
     return [];
@@ -531,7 +533,7 @@ export async function generateRalphInstructions(
   const remaining = total - completed;
 
   const instruction = `1. Read all context files listed in contextFiles
-2. Read prd.json to find the highest priority pending task (lowest priority number with done: false)
+2. Select a pending task (done: false) from tasks array
 3. Implement that single task
 4. Update prd.json: set passes: true for the completed task
 5. Append progress to progress.txt with timestamp and learnings
