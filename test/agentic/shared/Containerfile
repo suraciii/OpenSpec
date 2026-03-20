@@ -24,15 +24,12 @@ RUN if ! getent group ${GROUP_ID} > /dev/null 2>&1; then \
         useradd -g opentest -m -s /bin/bash opentest; \
     fi
 
-# Install OpenCode CLI and pnpm
-ARG HTTP_PROXY
-ARG HTTPS_PROXY
-RUN export http_proxy=$HTTP_PROXY && \
-    export https_proxy=$HTTPS_PROXY && \
-    curl -fsSL https://opencode.ai/install | bash && \
-    npm install -g pnpm && \
-    cp /root/.opencode/bin/opencode /usr/local/bin/opencode && \
-    chmod 755 /usr/local/bin/opencode
+# Copy pre-downloaded OpenCode CLI binary
+COPY test/agentic/shared/bin/opencode /usr/local/bin/opencode
+RUN chmod 755 /usr/local/bin/opencode
+
+# Install pnpm
+RUN npm install -g pnpm
 
 # Copy and install OpenSpec from source
 COPY --chown=opentest:opentest . /opt/openspec-src
