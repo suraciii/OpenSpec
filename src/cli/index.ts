@@ -518,6 +518,7 @@ program
   .description('Autonomous task execution for ralph-driven workflow')
   .option('--change <name>', 'Change name to execute')
   .option('--max-iterations <n>', 'Maximum number of iterations (default: 10)')
+  .option('--model <model>', 'Model to use (provider/model format, e.g., anthropic/claude-sonnet-4-20250514)')
   .action(async (options: RalphOptions) => {
     try {
       await ralphCommand(options);

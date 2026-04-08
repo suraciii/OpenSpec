@@ -11,6 +11,7 @@ import { loadChangeContext } from '../../core/artifact-graph/index.js';
 export interface RalphOptions {
   change?: string;
   maxIterations?: number;
+  model?: string;
 }
 
 export interface Executor {
@@ -131,7 +132,11 @@ export async function ralphCommand(options: RalphOptions): Promise<void> {
       console.log(chalk.cyan(`\n## Iteration ${i}/${maxIterations}`));
 
       try {
-        const output = await executor.executeOpenCode('opencode run --command opsx-ralph -- ' + changeName);
+        const modelArg = options.model ? `--model ${options.model}` : '';
+
+        const output = await executor.executeOpenCode(
+          `opencode run ${modelArg} --command opsx-ralph -- ${changeName}`
+        );
         
         if (output.includes('<promise>COMPLETE</promise>')) {
           console.log(chalk.green('\n✓ All tasks complete!'));

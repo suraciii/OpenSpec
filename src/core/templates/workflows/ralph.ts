@@ -64,16 +64,20 @@ I'll work through the prd.json tasks one at a time:
    - Keep other tasks unchanged
 
 6. **Append to progress.txt**
-   Add entry with:
-   - Timestamp
-   - Task ID completed
-   - Brief description of what was done
-   - Any blockers or learnings
-   - Next steps
+    Add entry with:
+    - Timestamp
+    - Task ID completed
+    - Brief description of what was done
+    - Any blockers or learnings
+    - Next steps
 
-7. **Check completion**
-   - If all tasks now have \`passes: true\`, output \`<promise>COMPLETE</promise>\`
-   - Otherwise, iteration is complete (Ralph CLI will spawn next iteration)
+7. **Commit changes**
+    - Run \`git add -A && git commit -m "ralph(<change-name>): <task-id> <task title>"\`
+    - Include all changes from this iteration (code, prd.json, progress.txt)
+
+8. **Check completion**
+    - If all tasks now have \`passes: true\`, output \`<promise>COMPLETE</promise>\`
+    - Otherwise, iteration is complete (Ralph CLI will spawn next iteration)
 
 ---
 
@@ -82,6 +86,7 @@ I'll work through the prd.json tasks one at a time:
 After completing the task:
 - Updated prd.json with passes: true
 - Updated progress.txt with entry
+- Git commit with task changes
 - If all tasks complete: output \`<promise>COMPLETE</promise>\`
 
 ---
@@ -114,7 +119,8 @@ I'll work through the prd.json tasks one at a time:
 3. Implement that single task
 4. Update prd.json: set passes: true for the completed task
 5. Append progress to progress.txt with timestamp and learnings
-6. If all tasks are now complete, output: <promise>COMPLETE</promise>
+6. Commit changes: git add -A && git commit
+7. If all tasks are now complete, output: <promise>COMPLETE</promise>
 
 ---
 
@@ -156,7 +162,11 @@ I'll work through the prd.json tasks one at a time:
 6. **Append to progress.txt**
    Add entry with timestamp, task ID, and learnings
 
-7. **Check completion**
+7. **Commit changes**
+   - Run \`git add -A && git commit -m "ralph(<change-name>): <task-id> <task title>"\`
+   - Include all changes from this iteration
+
+8. **Check completion**
    - If all tasks complete: output \`<promise>COMPLETE</promise>\``,
   };
 }
