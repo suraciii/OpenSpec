@@ -2,6 +2,8 @@
  * Ralph Workflow Template Module
  *
  * Template for the opsx-ralph agent command that executes Ralph iterations.
+ * Note: The automated `openspec ralph` loop uses direct prompt mode via buildIterationPrompt().
+ * This skill/command is retained for manual single-iteration execution via /opsx-ralph.
  */
 import type { SkillTemplate, CommandTemplate } from '../types.js';
 

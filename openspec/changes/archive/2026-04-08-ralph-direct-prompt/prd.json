@@ -1,0 +1,84 @@
+{
+  "project": "OpenSpec",
+  "description": "Refactor openspec ralph to generate iteration prompts directly instead of delegating to opsx-ralph skill",
+  "tasks": [
+    {
+      "id": "T-001",
+      "title": "Add buildIterationPrompt() to ralph.ts",
+      "spec": "specs/ralph-prompt-builder/spec.md#Iteration Prompt Generation",
+      "description": "Add buildIterationPrompt(changeName, instructions) function in src/commands/workflow/ralph.ts. It calls generateRalphInstructions() to get latest state, selects the next pending task (lowest priority where passes:false), and returns a pure natural language prompt string containing absolute paths to all context files, the selected task details (id, title, description, acceptanceCriteria, spec), step-by-step execution instructions, and the <promise>COMPLETE</promise> completion signal instruction. When all tasks are complete, return '<promise>COMPLETE</promise>' directly.",
+      "acceptanceCriteria": [
+        "Function exists and is exported",
+        "Prompt contains absolute paths via path.resolve()",
+        "Prompt contains only the next pending task (lowest priority)",
+        "Prompt includes spec reference path if task has spec field",
+        "Returns <promise>COMPLETE</promise> when all tasks done",
+        "Typecheck passes"
+      ],
+      "priority": 1,
+      "passes": true,
+      "notes": ""
+    },
+    {
+      "id": "T-002",
+      "title": "Refactor iteration loop to use direct prompt",
+      "spec": "specs/ralph-cli-command/spec.md#Iteration Loop",
+      "description": "Modify the iteration loop in ralphCommand() to: (1) call generateRalphInstructions() at the start of each iteration for fresh state, (2) check if all tasks complete and exit early, (3) call buildIterationPrompt() to generate the prompt, (4) spawn opencode run with the prompt string instead of --command opsx-ralph. The spawn command format: opencode run [--model X] '<prompt>'. Keep the Executor interface unchanged.",
+      "acceptanceCriteria": [
+        "Loop calls generateRalphInstructions() each iteration",
+        "Loop exits early when all tasks complete",
+        "Loop passes prompt to opencode run, not --command flag",
+        "Executor.executeOpenCode() still receives a single string",
+        "Completion signal <promise>COMPLETE</promise> detection unchanged",
+        "Typecheck passes"
+      ],
+      "priority": 2,
+      "passes": true,
+      "notes": ""
+    },
+    {
+      "id": "T-003",
+      "title": "Keep opsx-ralph skill for manual iteration",
+      "description": "The opsx-ralph skill and command should be retained for manual single-iteration execution via /opsx-ralph. Only the automated iteration loop uses direct prompt mode. Restore any removed getOpsxRalphSkillTemplate() and getOpsxRalphCommandTemplate() entries in the skill-generation pipeline.",
+      "acceptanceCriteria": [
+        "opsx-ralph skill template exists and is exported",
+        "opsx-ralph command template exists and is exported",
+        "ralph entry exists in getSkillTemplates() and getCommandTemplates()",
+        "opsx-ralph skill file can be generated via openspec init",
+        "Typecheck passes"
+      ],
+      "priority": 3,
+      "passes": true,
+      "notes": "Restored and verified. getOpsxRalphSkillTemplate/CommandTemplate in ralph.ts, re-exported in skill-templates.ts, entries in skill-generation.ts getSkillTemplates/getCommandTemplates, WORKFLOW_TO_SKILL_DIR mapping in init.ts. e2e confirms skill generation."
+    },
+    {
+      "id": "T-004",
+      "title": "Update iteration loop tests",
+      "description": "Update test/commands/ralph.test.ts to verify: (1) buildIterationPrompt() generates correct prompts with absolute paths and task details, (2) early exit when all tasks complete, (3) executor receives prompt string in direct mode.",
+      "acceptanceCriteria": [
+        "Test for buildIterationPrompt() with absolute paths",
+        "Test for early exit when all tasks complete",
+        "Test verifies prompt contains change name and next task details",
+        "All existing passing tests still pass",
+        "Typecheck passes"
+      ],
+      "priority": 4,
+      "passes": true,
+      "notes": "5/9 ralph tests pass; 4 failures are pre-existing (OpenCode not in PATH). buildIterationPrompt, early exit, and prompt content tests all pass."
+    },
+    {
+      "id": "T-005",
+      "title": "Update init and e2e tests",
+      "description": "Update test/cli-e2e/ralph-schema.test.ts and test/core/init.test.ts to reflect the new behavior: opsx-ralph skill is still created for ralph-driven schema, but iteration loop uses direct prompt mode.",
+      "acceptanceCriteria": [
+        "opsx-ralph skill assertions preserved in ralph-schema.test.ts",
+        "init.test.ts preserves opsx-ralph in expected skills/commands",
+        "TESTPLAN.md references opsx-ralph skill correctly",
+        "All tests pass"
+      ],
+      "priority": 5,
+      "passes": true,
+      "notes": "48/48 init tests pass, 3/3 ralph-schema e2e tests pass. opsx-ralph skill creation verified."
+    }
+  ]
+}

@@ -7,6 +7,11 @@ import * as fsSync from 'fs';
 import path from 'path';
 import { validateChangeExists } from './shared.js';
 import { loadChangeContext } from '../../core/artifact-graph/index.js';
+import {
+  generateRalphInstructions,
+  type RalphInstructions,
+  type RalphTask,
+} from './instructions.js';
 
 export interface RalphOptions {
   change?: string;
@@ -71,6 +76,111 @@ export function setExecutor(e: Executor): void {
   executor = e;
 }
 
+export function buildIterationPrompt(
+  projectRoot: string,
+  instructions: RalphInstructions
+): string {
+  const pendingTasks = instructions.tasks
+    .filter((t) => !t.done)
+    .sort((a, b) => a.priority - b.priority);
+
+  if (pendingTasks.length === 0) {
+    return '<promise>COMPLETE</promise>';
+  }
+
+  const task = pendingTasks[0];
+  const changeDir = path.join(
+    projectRoot,
+    'openspec',
+    'changes',
+    instructions.changeName
+  );
+
+  const contextFileLines: string[] = [];
+  for (const [artifactId, filePath] of Object.entries(instructions.contextFiles)) {
+    const absPath = path.resolve(projectRoot, filePath);
+    if (artifactId === 'specs') {
+      contextFileLines.push(`  - Spec files in: ${absPath}`);
+    } else {
+      contextFileLines.push(`  - ${artifactId}: ${absPath}`);
+    }
+  }
+
+  const hasSpec = !!task.spec;
+  const specSection = hasSpec
+    ? formatSpecSection(task.spec!, changeDir)
+    : '';
+
+  const criteriaLines = task.acceptanceCriteria
+    .map((c) => `  - ${c}`)
+    .join('\n');
+
+  const steps = [
+    '1. Read all context files listed above',
+  ];
+  if (hasSpec) {
+    steps.push('2. Read the spec file referenced above for detailed requirements');
+    steps.push('3. Implement the task');
+    steps.push('4. Run typecheck/tests to verify');
+    steps.push(`5. Update ${path.resolve(changeDir, 'prd.json')}: set passes:true for ${task.id}`);
+    steps.push(`6. Append to ${path.resolve(changeDir, 'progress.txt')} with:`);
+    steps.push('   - Timestamp, task ID, what was done, any learnings, next steps');
+    steps.push(`7. Run: git add -A && git commit -m "ralph(${instructions.changeName}): ${task.id} ${task.title}"`);
+    steps.push('8. If all tasks in prd.json now have passes:true, output: <promise>COMPLETE</promise>');
+  } else {
+    steps.push('2. Implement the task');
+    steps.push('3. Run typecheck/tests to verify');
+    steps.push(`4. Update ${path.resolve(changeDir, 'prd.json')}: set passes:true for ${task.id}`);
+    steps.push(`5. Append to ${path.resolve(changeDir, 'progress.txt')} with:`);
+    steps.push('   - Timestamp, task ID, what was done, any learnings, next steps');
+    steps.push(`6. Run: git add -A && git commit -m "ralph(${instructions.changeName}): ${task.id} ${task.title}"`);
+    steps.push('7. If all tasks in prd.json now have passes:true, output: <promise>COMPLETE</promise>');
+  }
+
+  return `You are executing one Ralph iteration for change "${instructions.changeName}".
+
+## Context Files
+Read ALL of these files before starting:
+${contextFileLines.join('\n')}
+
+## Progress
+${instructions.progress.completed}/${instructions.progress.total} tasks complete
+
+## Task to Implement
+- ID: ${task.id}
+- Priority: ${task.priority}
+- Title: ${task.title}
+${hasSpec ? `  - Spec: ${task.spec}\n` : ''}
+### Description
+${task.description}
+
+${specSection}
+### Acceptance Criteria
+${criteriaLines}
+
+## Steps
+${steps.join('\n')}
+
+## Guidelines
+- Focus on ONE task only
+- Make minimal, focused changes
+- Keep changes focused on the task description`;
+}
+
+function formatSpecSection(specRef: string, changeDir: string): string {
+  const hashIndex = specRef.indexOf('#');
+  const specFile = hashIndex >= 0 ? specRef.substring(0, hashIndex) : specRef;
+  const reqId = hashIndex >= 0 ? specRef.substring(hashIndex + 1) : null;
+  const absSpecPath = path.resolve(changeDir, specFile);
+
+  let section = `\n### Spec Reference
+  - File: ${absSpecPath}`;
+  if (reqId) {
+    section += `\n  - Focus on requirement: ${reqId}`;
+  }
+  return section;
+}
+
 export async function ralphCommand(options: RalphOptions): Promise<void> {
   const spinner = ora('Initializing Ralph execution...').start();
 
@@ -131,18 +241,27 @@ export async function ralphCommand(options: RalphOptions): Promise<void> {
     for (let i = 1; i <= maxIterations; i++) {
       console.log(chalk.cyan(`\n## Iteration ${i}/${maxIterations}`));
 
+      const instructions = await generateRalphInstructions(projectRoot, changeName);
+
+      if (instructions.progress.remaining === 0) {
+        console.log(chalk.green('\n✓ All tasks already complete!'));
+        return;
+      }
+
+      const prompt = buildIterationPrompt(projectRoot, instructions);
+
       try {
         const modelArg = options.model ? `--model ${options.model}` : '';
 
         const output = await executor.executeOpenCode(
-          `opencode run ${modelArg} --command opsx-ralph -- ${changeName}`
+          `opencode run ${modelArg} '${prompt}'`
         );
-        
+
         if (output.includes('<promise>COMPLETE</promise>')) {
           console.log(chalk.green('\n✓ All tasks complete!'));
           return;
         }
-        
+
         console.log(chalk.yellow('\n→ Iteration completed, continuing...'));
       } catch (error: any) {
         const errorMsg = error.message || '';
