@@ -23,7 +23,7 @@ describe('ralph command', () => {
 
   afterEach(async () => {
     setExecutor({
-      executeOpenCode: async () => '',
+      executeOpenCode: async (_cmd: string, _args: string[]) => '',
     });
     if (tempDir) {
       await fs.rm(tempDir, { recursive: true, force: true });
@@ -187,9 +187,10 @@ describe('ralph command', () => {
       
       // Test with a simple command that works on both Windows and Unix
       const isWindows = process.platform === 'win32';
-      const command = isWindows ? 'cmd /c echo hello' : 'echo hello';
+      const cmd = isWindows ? 'cmd' : 'echo';
+      const args = isWindows ? ['/c', 'echo', 'hello'] : ['hello'];
       
-      const output = await realExecutor.executeOpenCode(command);
+      const output = await realExecutor.executeOpenCode(cmd, args);
       
       // The output should contain 'hello' (output is streamed to console, 
       // but we also capture it for return)

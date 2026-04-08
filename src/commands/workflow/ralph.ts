@@ -20,15 +20,18 @@ export interface RalphOptions {
 }
 
 export interface Executor {
-  executeOpenCode(command: string): Promise<string>;
+  executeOpenCode(cmd: string, args: string[]): Promise<string>;
 }
 
 export class RealExecutor implements Executor {
-  async executeOpenCode(command: string): Promise<string> {
-    const parts = command.split(' ');
-    const cmd = parts[0];
-    const args = parts.slice(1);
-    
+  async executeOpenCode(cmd: string, args: string[]): Promise<string> {
+    // Check if command exists before spawning
+    try {
+      execSync(`${cmd} --version`, { stdio: 'ignore' });
+    } catch {
+      throw new Error(`${cmd} not found in PATH. Please install ${cmd} to use ralph command.`);
+    }
+
     return new Promise((resolve, reject) => {
       const child = spawn(cmd, args, {
         stdio: ['inherit', 'pipe', 'inherit']
@@ -223,13 +226,6 @@ export async function ralphCommand(options: RalphOptions): Promise<void> {
       `# Ralph Progress Log\nStarted: ${new Date().toISOString()}\n\n---\n\n`
     );
 
-    try {
-      execSync('opencode --version', { stdio: 'ignore' });
-    } catch {
-      spinner.stop();
-      throw new Error('OpenCode not found in PATH. Please install OpenCode to use ralph command.');
-    }
-
     spinner.stop();
 
     const maxIterations = options.maxIterations || 10;
@@ -251,11 +247,13 @@ export async function ralphCommand(options: RalphOptions): Promise<void> {
       const prompt = buildIterationPrompt(projectRoot, instructions);
 
       try {
-        const modelArg = options.model ? `--model ${options.model}` : '';
+        const args = ['run'];
+        if (options.model) {
+          args.push('--model', options.model);
+        }
+        args.push(prompt);
 
-        const output = await executor.executeOpenCode(
-          `opencode run ${modelArg} '${prompt}'`
-        );
+        const output = await executor.executeOpenCode('opencode', args);
 
         if (output.includes('<promise>COMPLETE</promise>')) {
           console.log(chalk.green('\n✓ All tasks complete!'));
