@@ -517,7 +517,31 @@ export async function generateRalphInstructions(
   }
 
   const prdContent = fs.readFileSync(prdPath, 'utf-8');
-  const tasks = parsePrdForRalph(prdContent);
+  const allTasks = parsePrdForRalph(prdContent);
+
+  // Filter to only pending tasks
+  const pendingTasks = allTasks.filter((t) => !t.done);
+  const completedTasks = allTasks.filter((t) => t.done);
+  
+  const total = allTasks.length;
+  const completed = completedTasks.length;
+  const remaining = pendingTasks.length;
+
+  // Sort pending tasks by priority and find next task
+  const sortedPending = [...pendingTasks].sort((a, b) => a.priority - b.priority);
+  const nextTask = sortedPending[0];
+
+  // If no pending tasks, return COMPLETE immediately
+  if (!nextTask) {
+    return {
+      changeName,
+      schemaName: context.schemaName,
+      contextFiles: {},
+      tasks: [],
+      progress: { total, completed, remaining: 0 },
+      instruction: '<promise>COMPLETE</promise>',
+    };
+  }
 
   const schema = resolveSchema(context.schemaName, projectRoot);
 
@@ -528,22 +552,59 @@ export async function generateRalphInstructions(
     }
   }
 
-  const total = tasks.length;
-  const completed = tasks.filter((t) => t.done).length;
-  const remaining = total - completed;
+  // Build context files list for instruction
+  const contextFilesList = Object.entries(contextFiles)
+    .map(([key, path]) => `  - ${key}: ${path}`)
+    .join('\n');
 
-  const instruction = `1. Read all context files listed in contextFiles
-2. Select a pending task (done: false) from tasks array
-3. Implement that single task
-4. Update prd.json: set passes: true for the completed task
-5. Append progress to progress.txt with timestamp and learnings
-6. If all tasks are now complete, output: <promise>COMPLETE</promise>`;
+  const instruction = `You are executing one Ralph iteration for change "${changeName}".
+
+## Context Files
+Read ALL of these files before starting:
+${contextFilesList || '  - prd.json (contains task definitions)'}
+
+## Progress
+${completed}/${total} tasks complete
+
+## Suggested Next Task
+Based on priority order (${nextTask.priority}), the next task should be:
+- ID: ${nextTask.id}
+- Priority: ${nextTask.priority}
+- Title: ${nextTask.title}
+
+## Task Description
+${nextTask.description}
+
+## Acceptance Criteria
+${nextTask.acceptanceCriteria.map(ac => `- ${ac}`).join('\n') || 'See spec file for acceptance criteria'}
+
+**CRITICAL VERIFICATION STEP**: Before implementing, you MUST:
+1. Read prd.json directly from disk
+2. Verify that task "${nextTask.id}" has passes: false (or undefined)
+3. If passes: true, find the actual next pending task with the lowest priority
+4. Implement the verified task, not necessarily the one suggested above
+
+## Steps
+1. Read all context files listed above
+2. Verify the selected task status in prd.json (see CRITICAL VERIFICATION above)
+3. Implement the verified pending task following its acceptance criteria
+4. Run typecheck/tests to verify implementation
+5. Update prd.json: set passes: true for the completed task
+6. Append to progress.txt with timestamp, task ID, what was done, and any learnings
+7. Run: git add -A && git commit -m "ralph(${changeName}): ${nextTask.id} ${nextTask.title}"
+8. If all tasks in prd.json now have passes: true, output: <promise>COMPLETE</promise>
+
+## Guidelines
+- Focus on ONE task only
+- Make minimal, focused changes
+- Keep changes focused on the task description
+- Always verify task status in prd.json before starting implementation`;
 
   return {
     changeName,
     schemaName: context.schemaName,
     contextFiles,
-    tasks,
+    tasks: sortedPending, // Only return pending tasks, sorted by priority
     progress: { total, completed, remaining },
     instruction,
   };
