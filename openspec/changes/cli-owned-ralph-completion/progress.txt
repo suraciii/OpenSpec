@@ -1,0 +1,30 @@
+# Ralph Progress Log
+Started: 2026-04-09T08:00:00Z
+
+---
+
+## 2026-04-09T08:01:30Z - T-001 Complete
+
+**Task**: Remove promise references from prompt builder
+
+**What was done**:
+- Modified `buildIterationPrompt()` in `src/commands/workflow/ralph.ts`
+- Removed return of `'<promise>COMPLETE</promise>'` when no pending tasks (line 91), now returns empty string
+- Removed step 8 that instructed agent to output promise when spec is present (was line 132)
+- Removed step 7 that instructed agent to output promise when no spec (was line 140)
+- Adjusted step numbering: 8 steps → 7 steps (with spec), 7 steps → 6 steps (without spec)
+- TypeScript type check passes
+
+**Acceptance criteria verified**:
+- ✅ Removed steps referencing '<promise>COMPLETE</promise>' from prompt steps array
+- ✅ Prompt no longer instructs agent to output completion signals
+- ✅ Final step is now "Run: git add -A && git commit -m ..."
+- ✅ Typecheck passes
+
+**Learnings**:
+- The prompt builder had redundant completion signals both in early return (line 91) and in step instructions (lines 132, 140)
+- Removing these simplifies the agent contract significantly
+- Steps are now purely focused on: read → implement → test → update prd.json → commit
+
+**Next steps**:
+- T-002: Remove post-flight promise detection from loop (lines 258-261 in ralphCommand)

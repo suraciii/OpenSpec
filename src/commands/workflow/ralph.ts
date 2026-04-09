@@ -88,7 +88,7 @@ export function buildIterationPrompt(
     .sort((a, b) => a.priority - b.priority);
 
   if (pendingTasks.length === 0) {
-    return '<promise>COMPLETE</promise>';
+    return '';
   }
 
   const task = pendingTasks[0];
@@ -129,7 +129,6 @@ export function buildIterationPrompt(
     steps.push(`6. Append to ${path.resolve(changeDir, 'progress.txt')} with:`);
     steps.push('   - Timestamp, task ID, what was done, any learnings, next steps');
     steps.push(`7. Run: git add -A && git commit -m "ralph(${instructions.changeName}): ${task.id} ${task.title}"`);
-    steps.push('8. If all tasks in prd.json now have passes:true, output: <promise>COMPLETE</promise>');
   } else {
     steps.push('2. Implement the task');
     steps.push('3. Run typecheck/tests to verify');
@@ -137,7 +136,6 @@ export function buildIterationPrompt(
     steps.push(`5. Append to ${path.resolve(changeDir, 'progress.txt')} with:`);
     steps.push('   - Timestamp, task ID, what was done, any learnings, next steps');
     steps.push(`6. Run: git add -A && git commit -m "ralph(${instructions.changeName}): ${task.id} ${task.title}"`);
-    steps.push('7. If all tasks in prd.json now have passes:true, output: <promise>COMPLETE</promise>');
   }
 
   return `You are executing one Ralph iteration for change "${instructions.changeName}".

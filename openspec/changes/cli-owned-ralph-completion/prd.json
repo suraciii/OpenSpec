@@ -15,7 +15,7 @@
         "Typecheck passes"
       ],
       "priority": 1,
-      "passes": false,
+      "passes": true,
       "notes": "Focus on buildIterationPrompt function lines 82-171. Remove lines 132 and 140 that instruct agent to output promise. Remove lines 122-141 that contain verification steps."
     },
     {
