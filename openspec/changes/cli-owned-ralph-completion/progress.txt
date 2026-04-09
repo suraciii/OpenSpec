@@ -109,3 +109,29 @@ Started: 2026-04-09T08:00:00Z
 
 **Next steps**:
 - T-005: Add optional NO_PROGRESS signal support (optional enhancement)
+
+---
+
+## 2026-04-09T08:22:00Z - T-005 Complete
+
+**Task**: Add optional NO_PROGRESS signal support
+
+**What was done**:
+- Modified `ralphCommand()` in `src/commands/workflow/ralph.ts`
+- Added detection for `<promise>NO_PROGRESS</promise>` signal after agent execution
+- When detected, prints warning: "⚠️  Agent reported no progress this iteration"
+- Loop continues normally after warning (does not exit)
+- TypeScript type check passes
+
+**Acceptance criteria verified**:
+- ✅ If output contains '<promise>NO_PROGRESS</promise>', print warning
+- ✅ Loop continues normally after warning
+- ✅ Typecheck passes
+
+**Learnings**:
+- Optional signal provides better UX for identifying stuck agents
+- Warning is printed but iteration continues (non-blocking)
+- Useful for debugging and monitoring agent behavior
+
+**Summary**:
+All 5 tasks completed successfully. The CLI is now the sole authority on completion detection. Agent contract simplified to: implement one task, update prd.json. No completion signals required from agents.

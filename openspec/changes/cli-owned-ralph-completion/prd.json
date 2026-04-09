@@ -72,7 +72,7 @@
         "Typecheck passes"
       ],
       "priority": 5,
-      "passes": false,
+      "passes": true,
       "notes": "This is optional enhancement. Can be added after T-002. Keep it simple - just detect and warn."
     }
   ]

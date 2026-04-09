@@ -253,6 +253,11 @@ export async function ralphCommand(options: RalphOptions): Promise<void> {
 
         const output = await executor.executeOpenCode('opencode', args);
 
+        // Check for optional NO_PROGRESS signal
+        if (output.includes('<promise>NO_PROGRESS</promise>')) {
+          console.log(chalk.yellow('\n⚠️  Agent reported no progress this iteration'));
+        }
+
         console.log(chalk.yellow('\n→ Iteration completed, continuing...'));
       } catch (error: any) {
         const errorMsg = error.message || '';
