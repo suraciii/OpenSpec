@@ -160,6 +160,39 @@ describe('ralph command', () => {
 
       process.cwd = originalCwd;
     });
+
+    it('completes full workflow: agent executes task → updates prd.json → CLI detects completion', async () => {
+      const originalCwd = process.cwd;
+      process.cwd = () => tempDir;
+
+      const changeDir = await createRalphDrivenChange('e2e-test', {
+        prdData: createOpenPrdData(1),
+      });
+
+      let callCount = 0;
+      mockExecutor.executeOpenCode = vi.fn().mockImplementation(async () => {
+        callCount++;
+        if (callCount === 1) {
+          // First iteration: agent completes the task by updating prd.json
+          const prdPath = path.join(changeDir, 'prd.json');
+          const prdContent = await fs.readFile(prdPath, 'utf-8');
+          const prd = JSON.parse(prdContent);
+          prd.tasks[0].passes = true;
+          await fs.writeFile(prdPath, JSON.stringify(prd, null, 2));
+          return 'Task completed';
+        }
+        return '';
+      });
+
+      await ralphCommand({ change: 'e2e-test', maxIterations: 10 });
+
+      // Should have executed twice:
+      // 1. First iteration to complete the task
+      // 2. Second iteration to detect completion (but should exit before spawning agent)
+      expect(callCount).toBe(1);
+
+      process.cwd = originalCwd;
+    });
   });
 
   describe('progress archiving', () => {

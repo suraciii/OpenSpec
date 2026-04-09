@@ -88,7 +88,7 @@ export function buildIterationPrompt(
     .sort((a, b) => a.priority - b.priority);
 
   if (pendingTasks.length === 0) {
-    return '';
+    return 'All tasks are complete. No further action needed.';
   }
 
   const task = pendingTasks[0];
