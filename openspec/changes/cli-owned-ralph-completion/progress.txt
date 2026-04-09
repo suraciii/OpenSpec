@@ -56,3 +56,30 @@ Started: 2026-04-09T08:00:00Z
 
 **Next steps**:
 - T-003: Update skill documentation for simplified agent contract
+
+---
+
+## 2026-04-09T08:10:00Z - T-003 Complete
+
+**Task**: Update skill documentation for simplified agent contract
+
+**What was done**:
+- Updated `.opencode/skills/opsx-ralph/SKILL.md`
+- Removed step 6 from overview list that mentioned outputting promise
+- Removed "If no pending tasks, output `<promise>COMPLETE</promise>`" from step 3
+- Updated step 7 to say "the change is complete" instead of "output `<promise>COMPLETE</promise>`"
+- Updated Output section to say "The CLI will automatically detect when all tasks are complete"
+- Updated skill description to clarify CLI controls completion detection
+
+**Acceptance criteria verified**:
+- ✅ Removed step 6 from skill instructions that mentions '<promise>COMPLETE</promise>'
+- ✅ Skill description updated to reflect CLI-owned completion
+- ✅ Agent now only responsible for implementing and updating prd.json
+
+**Learnings**:
+- Skill documentation is the primary interface for agents using the ralph workflow
+- Clear documentation prevents agents from being confused about their responsibilities
+- The skill now accurately reflects the simplified agent contract
+
+**Next steps**:
+- T-004: Update ralph command tests

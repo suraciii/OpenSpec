@@ -44,7 +44,7 @@
         "Agent now only responsible for implementing and updating prd.json"
       ],
       "priority": 3,
-      "passes": false,
+      "passes": true,
       "notes": "The skill is located at .opencode/skills/opsx-ralph/SKILL.md. Check the Output section and step 6 in the Steps section."
     },
     {
