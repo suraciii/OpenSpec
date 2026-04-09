@@ -83,3 +83,29 @@ Started: 2026-04-09T08:00:00Z
 
 **Next steps**:
 - T-004: Update ralph command tests
+
+---
+
+## 2026-04-09T08:18:00Z - T-004 Complete
+
+**Task**: Update ralph command tests
+
+**What was done**:
+- Updated `test/commands/ralph.test.ts`
+- Replaced old test 'detects completion signal and exits successfully' with new test 'exits successfully when all tasks complete via pre-flight check'
+- Updated test 'reaches max iterations when no completion signal' to 'reaches max iterations when tasks remain incomplete'
+- Added new test 'ignores completion signal in agent output (CLI-owned detection)' to verify promise signals are ignored
+- All 10 tests pass
+
+**Acceptance criteria verified**:
+- ✅ Updated test assertions to not check for '<promise>COMPLETE</promise>' in output
+- ✅ Tests verify completion is detected via pre-flight check (tasks complete → early exit)
+- ✅ All tests pass (10/10)
+
+**Learnings**:
+- Testing CLI-owned completion requires creating completed tasks in prd.json
+- The new test structure better reflects the actual behavior: pre-flight check determines completion
+- Added explicit test to verify promise signals are ignored (backward compatibility safety)
+
+**Next steps**:
+- T-005: Add optional NO_PROGRESS signal support (optional enhancement)

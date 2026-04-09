@@ -58,7 +58,7 @@
         "All tests pass"
       ],
       "priority": 4,
-      "passes": false,
+      "passes": true,
       "notes": "Check the test file for assertions about promise detection. May need to update mock outputs and expectations."
     },
     {

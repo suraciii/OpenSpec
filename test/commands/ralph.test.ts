@@ -106,34 +106,57 @@ describe('ralph command', () => {
   });
 
   describe('loop controller', () => {
-    it('detects completion signal and exits successfully', async () => {
+    it('exits successfully when all tasks complete via pre-flight check', async () => {
       const originalCwd = process.cwd;
       process.cwd = () => tempDir;
 
-      await createRalphDrivenChange('exec-test', {
-        prdData: createOpenPrdData(1),
+      await createRalphDrivenChange('completed-test', {
+        prdData: createCompletedPrdData(1),
       });
 
-      mockExecutor.executeOpenCode = vi.fn().mockResolvedValue('<promise>COMPLETE</promise>');
+      // Mock returns empty string (no completion signal needed)
+      mockExecutor.executeOpenCode = vi.fn().mockResolvedValue('');
 
-      await ralphCommand({ change: 'exec-test', maxIterations: 10 });
+      await ralphCommand({ change: 'completed-test', maxIterations: 10 });
+      // Should exit successfully without needing any iterations
+      expect(mockExecutor.executeOpenCode).not.toHaveBeenCalled();
 
       process.cwd = originalCwd;
     });
 
-    it('reaches max iterations when no completion signal', async () => {
+    it('reaches max iterations when tasks remain incomplete', async () => {
       const originalCwd = process.cwd;
       process.cwd = () => tempDir;
 
-      await createRalphDrivenChange('no-complete-test', {
+      await createRalphDrivenChange('incomplete-test', {
         prdData: createOpenPrdData(1),
       });
 
-      // Mock returns empty string (no completion signal)
+      // Mock returns empty string (task not completed)
       mockExecutor.executeOpenCode = vi.fn().mockResolvedValue('');
 
-      await ralphCommand({ change: 'no-complete-test', maxIterations: 1 });
+      await ralphCommand({ change: 'incomplete-test', maxIterations: 1 });
       expect(process.exitCode).toBe(1);
+
+      process.cwd = originalCwd;
+    });
+
+    it('ignores completion signal in agent output (CLI-owned detection)', async () => {
+      const originalCwd = process.cwd;
+      process.cwd = () => tempDir;
+
+      await createRalphDrivenChange('ignore-signal-test', {
+        prdData: createOpenPrdData(1),
+      });
+
+      // Mock returns completion signal but task is not actually done
+      mockExecutor.executeOpenCode = vi.fn().mockResolvedValue('<promise>COMPLETE</promise>');
+
+      await ralphCommand({ change: 'ignore-signal-test', maxIterations: 1 });
+      // Should reach max iterations because task is still incomplete
+      expect(process.exitCode).toBe(1);
+      // But should have executed once
+      expect(mockExecutor.executeOpenCode).toHaveBeenCalledTimes(1);
 
       process.cwd = originalCwd;
     });
