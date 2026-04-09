@@ -28,3 +28,31 @@ Started: 2026-04-09T08:00:00Z
 
 **Next steps**:
 - T-002: Remove post-flight promise detection from loop (lines 258-261 in ralphCommand)
+
+---
+
+## 2026-04-09T08:05:00Z - T-002 Complete
+
+**Task**: Remove post-flight promise detection from loop
+
+**What was done**:
+- Modified `ralphCommand()` in `src/commands/workflow/ralph.ts`
+- Removed the post-flight check for `<promise>COMPLETE</promise>` in agent output (lines 256-259)
+- The `output` variable is now unused but will be needed for T-005 (NO_PROGRESS detection)
+- Loop now relies entirely on pre-flight check (`instructions.progress.remaining === 0` at lines 242-245)
+- TypeScript type check passes
+
+**Acceptance criteria verified**:
+- ✅ Removed if (output.includes('<promise>COMPLETE</promise>')) check
+- ✅ Pre-flight check at line 242-245 remains as primary completion mechanism
+- ✅ Loop continues to next iteration if tasks remain
+- ✅ Typecheck passes
+
+**Learnings**:
+- The post-flight check was redundant since pre-flight check already handles completion
+- Removing it simplifies the loop logic significantly
+- CLI is now the sole authority on completion detection
+- The output variable is kept for T-005 (optional NO_PROGRESS signal)
+
+**Next steps**:
+- T-003: Update skill documentation for simplified agent contract

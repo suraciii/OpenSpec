@@ -253,11 +253,6 @@ export async function ralphCommand(options: RalphOptions): Promise<void> {
 
         const output = await executor.executeOpenCode('opencode', args);
 
-        if (output.includes('<promise>COMPLETE</promise>')) {
-          console.log(chalk.green('\n✓ All tasks complete!'));
-          return;
-        }
-
         console.log(chalk.yellow('\n→ Iteration completed, continuing...'));
       } catch (error: any) {
         const errorMsg = error.message || '';
