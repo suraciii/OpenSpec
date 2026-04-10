@@ -26,7 +26,7 @@ describe('ralph-driven schema init', () => {
     }
   });
 
-  it('initializes with ralph-driven schema and creates opsx-ralph skill', async () => {
+  it('initializes with ralph-driven schema and creates opsx-ralph command (not skill)', async () => {
     const result = await runCLI(['init', '--tools', 'opencode', '--schema', 'ralph-driven'], {
       cwd: tempDir,
     });
@@ -40,14 +40,18 @@ describe('ralph-driven schema init', () => {
     const configContent = await fs.readFile(configPath, 'utf-8');
     expect(configContent).toContain('schema: ralph-driven');
 
-    // Verify opsx-ralph skill was created
+    // Verify opsx-ralph skill was NOT created (skill removed, command preserved)
     const ralphSkillPath = path.join(tempDir, '.opencode', 'skills', 'opsx-ralph', 'SKILL.md');
-    expect(await fileExists(ralphSkillPath)).toBe(true);
+    expect(await fileExists(ralphSkillPath)).toBe(false);
 
-    // Verify skill content
-    const skillContent = await fs.readFile(ralphSkillPath, 'utf-8');
-    expect(skillContent).toContain('Execute one Ralph iteration');
-    expect(skillContent).toContain('opsx-ralph');
+    // Verify opsx-ralph command was created
+    const ralphCommandPath = path.join(tempDir, '.opencode', 'commands', 'opsx-ralph.md');
+    expect(await fileExists(ralphCommandPath)).toBe(true);
+
+    // Verify command content
+    const commandContent = await fs.readFile(ralphCommandPath, 'utf-8');
+    expect(commandContent).toContain('Ralph');
+    expect(commandContent).toContain('Execute one Ralph iteration');
   });
 
   it('initializes with ralph-driven schema and creates opsx-ralph command when delivery includes commands', async () => {
@@ -77,9 +81,9 @@ describe('ralph-driven schema init', () => {
     const skillsDir = path.join(tempDir, '.opencode', 'skills');
     
     // All skills that should exist for ralph-driven
+    // Note: opsx-ralph is no longer a skill (command only)
     const requiredSkills = [
       'openspec-propose',
-      'opsx-ralph',
     ];
 
     for (const skill of requiredSkills) {

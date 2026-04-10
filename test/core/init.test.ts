@@ -797,12 +797,12 @@ describe('InitCommand - profile and detection features', () => {
 
       await initCommand.execute(testDir);
 
-      // ralph-driven schema defines: propose, explore, ralph, archive
+      // ralph-driven schema defines: propose, explore, ralph (command only, not skill), archive
       // It does NOT include 'apply'
+      // Note: opsx-ralph skill was removed; the ralph workflow now only generates a command
       const expectedSkills = [
         'openspec-propose',
         'openspec-explore',
-        'opsx-ralph',
         'openspec-archive-change',
       ];
 
@@ -839,13 +839,13 @@ describe('InitCommand - profile and detection features', () => {
 
       await initCommand.execute(testDir);
 
-      // Core profile includes: propose, explore, apply, archive, ralph
+      // Core profile includes: propose, explore, apply, archive, ralph (command only, not skill)
+      // Note: opsx-ralph skill was removed; the ralph workflow now only generates a command
       const coreSkills = [
         'openspec-propose',
         'openspec-explore',
         'openspec-apply-change',
         'openspec-archive-change',
-        'opsx-ralph',
       ];
 
       for (const skillName of coreSkills) {

@@ -11,6 +11,7 @@ import { CommandAdapterRegistry } from '../../src/core/command-generation/index.
 
 function writeSkill(projectDir: string, workflowId: string): void {
   const skillDirName = WORKFLOW_TO_SKILL_DIR[workflowId as keyof typeof WORKFLOW_TO_SKILL_DIR];
+  if (!skillDirName) return;
   const skillPath = path.join(projectDir, '.claude', 'skills', skillDirName, 'SKILL.md');
   fs.mkdirSync(path.dirname(skillPath), { recursive: true });
   fs.writeFileSync(skillPath, `name: ${skillDirName}\n`);

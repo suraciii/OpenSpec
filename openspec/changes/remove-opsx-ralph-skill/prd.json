@@ -80,8 +80,8 @@
         "All tests pass"
       ],
       "priority": 6,
-      "passes": false,
-      "notes": "Check test/core/profile-sync-drift.test.ts too."
+      "passes": true,
+      "notes": "Updated writeSkill() in test/core/profile-sync-drift.test.ts to skip workflows without skill mapping (like ralph). All related tests pass."
     }
   ]
 }
