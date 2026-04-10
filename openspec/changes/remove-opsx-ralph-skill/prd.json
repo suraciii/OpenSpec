@@ -66,8 +66,8 @@
         ".opencode/skills/opsx-ralph/SKILL.md no longer exists in repo"
       ],
       "priority": 5,
-      "passes": false,
-      "notes": "This is the repo's own skill file, not a template."
+      "passes": true,
+      "notes": "Deleted .opencode/skills/opsx-ralph/SKILL.md and removed the directory."
     },
     {
       "id": "T-006",
