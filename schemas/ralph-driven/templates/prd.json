@@ -1,0 +1,19 @@
+{
+  "project": "{{projectName}}",
+  "description": "{{changeDescription}}",
+  "tasks": [
+    {
+      "id": "T-001",
+      "title": "{{taskTitle}}",
+      "spec": "specs/example/spec.md#REQ-001",
+      "description": "{{taskDescription}}",
+      "acceptanceCriteria": [
+        "Criterion 1",
+        "Typecheck passes"
+      ],
+      "priority": 1,
+      "passes": false,
+      "notes": ""
+    }
+  ]
+}

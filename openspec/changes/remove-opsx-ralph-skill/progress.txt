@@ -1,0 +1,11 @@
+# Ralph Progress Log
+Started: 2026-04-10T02:48:23.783Z
+
+---
+T-006 | 2026-04-10T02:55:XX | Update tests to reflect skill removal
+- Updated writeSkill() in test/core/profile-sync-drift.test.ts to skip workflows without skill mapping
+- Added null check for skillDirName to handle ralph (command-only, no skill)
+- All tests pass: init.test.ts (48), profile-sync-drift.test.ts (5), ralph-schema.test.ts (3)
+- Lint passes
+- Next steps: None - all T-006 work complete
+

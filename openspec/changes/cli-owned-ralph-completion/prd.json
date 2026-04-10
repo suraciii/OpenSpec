@@ -1,0 +1,79 @@
+{
+  "project": "OpenSpec",
+  "description": "Make CLI the sole authority for Ralph completion detection by removing promise-based signals",
+  "tasks": [
+    {
+      "id": "T-001",
+      "title": "Remove promise references from prompt builder",
+      "spec": "specs/ralph-cli-completion/spec.md#REQ-002",
+      "description": "Modify buildIterationPrompt() in src/commands/workflow/ralph.ts to remove all references to <promise>COMPLETE</promise> and simplify agent instructions.",
+      "acceptanceCriteria": [
+        "Removed steps referencing '<promise>COMPLETE</promise>' from prompt steps array",
+        "Removed 'CRITICAL VERIFICATION STEP' paragraph from prompt",
+        "Final step simplified to 'Commit changes and finish'",
+        "Prompt no longer instructs agent to output completion signals",
+        "Typecheck passes"
+      ],
+      "priority": 1,
+      "passes": true,
+      "notes": "Focus on buildIterationPrompt function lines 82-171. Remove lines 132 and 140 that instruct agent to output promise. Remove lines 122-141 that contain verification steps."
+    },
+    {
+      "id": "T-002",
+      "title": "Remove post-flight promise detection from loop",
+      "spec": "specs/ralph-cli-completion/spec.md#REQ-003",
+      "description": "Modify ralphCommand() loop in src/commands/workflow/ralph.ts to remove the check for <promise>COMPLETE</promise> in agent output. Rely entirely on pre-flight check.",
+      "acceptanceCriteria": [
+        "Removed if (output.includes('<promise>COMPLETE</promise>')) check (lines 258-261)",
+        "Pre-flight check at line 242-245 remains as primary completion mechanism",
+        "Loop continues to next iteration if tasks remain",
+        "Typecheck passes"
+      ],
+      "priority": 2,
+      "passes": true,
+      "notes": "Lines 258-261 should be removed. The pre-flight check on lines 242-245 already handles completion detection correctly."
+    },
+    {
+      "id": "T-003",
+      "title": "Update skill documentation for simplified agent contract",
+      "spec": "specs/ralph-cli-completion/spec.md#REQ-002",
+      "description": "Update .opencode/skills/opsx-ralph/SKILL.md to reflect the simplified agent responsibilities. Remove instructions about outputting <promise>COMPLETE</promise>.",
+      "acceptanceCriteria": [
+        "Removed step 6 from skill instructions that mentions '<promise>COMPLETE</promise>'",
+        "Skill description updated to reflect CLI-owned completion",
+        "Agent now only responsible for implementing and updating prd.json"
+      ],
+      "priority": 3,
+      "passes": true,
+      "notes": "The skill is located at .opencode/skills/opsx-ralph/SKILL.md. Check the Output section and step 6 in the Steps section."
+    },
+    {
+      "id": "T-004",
+      "title": "Update ralph command tests",
+      "spec": "specs/ralph-cli-completion/spec.md",
+      "description": "Update test/commands/ralph.test.ts to reflect the new completion detection behavior. Tests should not expect promise in output.",
+      "acceptanceCriteria": [
+        "Updated test assertions to not check for '<promise>COMPLETE</promise>' in output",
+        "Tests verify completion is detected via pre-flight check",
+        "All tests pass"
+      ],
+      "priority": 4,
+      "passes": true,
+      "notes": "Check the test file for assertions about promise detection. May need to update mock outputs and expectations."
+    },
+    {
+      "id": "T-005",
+      "title": "Add optional NO_PROGRESS signal support",
+      "spec": "specs/ralph-cli-completion/spec.md#REQ-005",
+      "description": "Add optional detection for <promise>NO_PROGRESS</promise> signal to help identify stuck agents.",
+      "acceptanceCriteria": [
+        "If output contains '<promise>NO_PROGRESS</promise>', print warning",
+        "Loop continues normally after warning",
+        "Typecheck passes"
+      ],
+      "priority": 5,
+      "passes": true,
+      "notes": "This is optional enhancement. Can be added after T-002. Keep it simple - just detect and warn."
+    }
+  ]
+}

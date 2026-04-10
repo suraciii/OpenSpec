@@ -1,0 +1,137 @@
+# Ralph Progress Log
+Started: 2026-04-09T08:00:00Z
+
+---
+
+## 2026-04-09T08:01:30Z - T-001 Complete
+
+**Task**: Remove promise references from prompt builder
+
+**What was done**:
+- Modified `buildIterationPrompt()` in `src/commands/workflow/ralph.ts`
+- Removed return of `'<promise>COMPLETE</promise>'` when no pending tasks (line 91), now returns empty string
+- Removed step 8 that instructed agent to output promise when spec is present (was line 132)
+- Removed step 7 that instructed agent to output promise when no spec (was line 140)
+- Adjusted step numbering: 8 steps → 7 steps (with spec), 7 steps → 6 steps (without spec)
+- TypeScript type check passes
+
+**Acceptance criteria verified**:
+- ✅ Removed steps referencing '<promise>COMPLETE</promise>' from prompt steps array
+- ✅ Prompt no longer instructs agent to output completion signals
+- ✅ Final step is now "Run: git add -A && git commit -m ..."
+- ✅ Typecheck passes
+
+**Learnings**:
+- The prompt builder had redundant completion signals both in early return (line 91) and in step instructions (lines 132, 140)
+- Removing these simplifies the agent contract significantly
+- Steps are now purely focused on: read → implement → test → update prd.json → commit
+
+**Next steps**:
+- T-002: Remove post-flight promise detection from loop (lines 258-261 in ralphCommand)
+
+---
+
+## 2026-04-09T08:05:00Z - T-002 Complete
+
+**Task**: Remove post-flight promise detection from loop
+
+**What was done**:
+- Modified `ralphCommand()` in `src/commands/workflow/ralph.ts`
+- Removed the post-flight check for `<promise>COMPLETE</promise>` in agent output (lines 256-259)
+- The `output` variable is now unused but will be needed for T-005 (NO_PROGRESS detection)
+- Loop now relies entirely on pre-flight check (`instructions.progress.remaining === 0` at lines 242-245)
+- TypeScript type check passes
+
+**Acceptance criteria verified**:
+- ✅ Removed if (output.includes('<promise>COMPLETE</promise>')) check
+- ✅ Pre-flight check at line 242-245 remains as primary completion mechanism
+- ✅ Loop continues to next iteration if tasks remain
+- ✅ Typecheck passes
+
+**Learnings**:
+- The post-flight check was redundant since pre-flight check already handles completion
+- Removing it simplifies the loop logic significantly
+- CLI is now the sole authority on completion detection
+- The output variable is kept for T-005 (optional NO_PROGRESS signal)
+
+**Next steps**:
+- T-003: Update skill documentation for simplified agent contract
+
+---
+
+## 2026-04-09T08:10:00Z - T-003 Complete
+
+**Task**: Update skill documentation for simplified agent contract
+
+**What was done**:
+- Updated `.opencode/skills/opsx-ralph/SKILL.md`
+- Removed step 6 from overview list that mentioned outputting promise
+- Removed "If no pending tasks, output `<promise>COMPLETE</promise>`" from step 3
+- Updated step 7 to say "the change is complete" instead of "output `<promise>COMPLETE</promise>`"
+- Updated Output section to say "The CLI will automatically detect when all tasks are complete"
+- Updated skill description to clarify CLI controls completion detection
+
+**Acceptance criteria verified**:
+- ✅ Removed step 6 from skill instructions that mentions '<promise>COMPLETE</promise>'
+- ✅ Skill description updated to reflect CLI-owned completion
+- ✅ Agent now only responsible for implementing and updating prd.json
+
+**Learnings**:
+- Skill documentation is the primary interface for agents using the ralph workflow
+- Clear documentation prevents agents from being confused about their responsibilities
+- The skill now accurately reflects the simplified agent contract
+
+**Next steps**:
+- T-004: Update ralph command tests
+
+---
+
+## 2026-04-09T08:18:00Z - T-004 Complete
+
+**Task**: Update ralph command tests
+
+**What was done**:
+- Updated `test/commands/ralph.test.ts`
+- Replaced old test 'detects completion signal and exits successfully' with new test 'exits successfully when all tasks complete via pre-flight check'
+- Updated test 'reaches max iterations when no completion signal' to 'reaches max iterations when tasks remain incomplete'
+- Added new test 'ignores completion signal in agent output (CLI-owned detection)' to verify promise signals are ignored
+- All 10 tests pass
+
+**Acceptance criteria verified**:
+- ✅ Updated test assertions to not check for '<promise>COMPLETE</promise>' in output
+- ✅ Tests verify completion is detected via pre-flight check (tasks complete → early exit)
+- ✅ All tests pass (10/10)
+
+**Learnings**:
+- Testing CLI-owned completion requires creating completed tasks in prd.json
+- The new test structure better reflects the actual behavior: pre-flight check determines completion
+- Added explicit test to verify promise signals are ignored (backward compatibility safety)
+
+**Next steps**:
+- T-005: Add optional NO_PROGRESS signal support (optional enhancement)
+
+---
+
+## 2026-04-09T08:22:00Z - T-005 Complete
+
+**Task**: Add optional NO_PROGRESS signal support
+
+**What was done**:
+- Modified `ralphCommand()` in `src/commands/workflow/ralph.ts`
+- Added detection for `<promise>NO_PROGRESS</promise>` signal after agent execution
+- When detected, prints warning: "⚠️  Agent reported no progress this iteration"
+- Loop continues normally after warning (does not exit)
+- TypeScript type check passes
+
+**Acceptance criteria verified**:
+- ✅ If output contains '<promise>NO_PROGRESS</promise>', print warning
+- ✅ Loop continues normally after warning
+- ✅ Typecheck passes
+
+**Learnings**:
+- Optional signal provides better UX for identifying stuck agents
+- Warning is printed but iteration continues (non-blocking)
+- Useful for debugging and monitoring agent behavior
+
+**Summary**:
+All 5 tasks completed successfully. The CLI is now the sole authority on completion detection. Agent contract simplified to: implement one task, update prd.json. No completion signals required from agents.

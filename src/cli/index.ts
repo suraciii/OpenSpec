@@ -20,6 +20,7 @@ import {
   statusCommand,
   instructionsCommand,
   applyInstructionsCommand,
+  ralphInstructionsCommand,
   templatesCommand,
   schemasCommand,
   newChangeCommand,
@@ -30,6 +31,7 @@ import {
   type SchemasOptions,
   type NewChangeOptions,
 } from '../commands/workflow/index.js';
+import { ralphCommand, type RalphOptions } from '../commands/workflow/ralph.js';
 import { maybeShowTelemetryNotice, trackCommand, shutdown } from '../telemetry/index.js';
 
 const program = new Command();
@@ -96,7 +98,8 @@ program
   .option('--tools <tools>', toolsOptionDescription)
   .option('--force', 'Auto-cleanup legacy files without prompting')
   .option('--profile <profile>', 'Override global config profile (core or custom)')
-  .action(async (targetPath = '.', options?: { tools?: string; force?: boolean; profile?: string }) => {
+  .option('--schema <name>', 'Set default schema (e.g., spec-driven, ralph-driven)')
+  .action(async (targetPath = '.', options?: { tools?: string; force?: boolean; profile?: string; schema?: string }) => {
     try {
       // Validate that the path is a valid directory
       const resolvedPath = path.resolve(targetPath);
@@ -122,6 +125,7 @@ program
         tools: options?.tools,
         force: options?.force,
         profile: options?.profile,
+        schema: options?.schema,
       });
       await initCommand.execute(targetPath);
     } catch (error) {
@@ -445,9 +449,10 @@ program
   .option('--json', 'Output as JSON')
   .action(async (artifactId: string | undefined, options: InstructionsOptions) => {
     try {
-      // Special case: "apply" is not an artifact, but a command to get apply instructions
       if (artifactId === 'apply') {
         await applyInstructionsCommand(options);
+      } else if (artifactId === 'ralph') {
+        await ralphInstructionsCommand(options);
       } else {
         await instructionsCommand(artifactId, options);
       }
@@ -500,6 +505,23 @@ newCmd
   .action(async (name: string, options: NewChangeOptions) => {
     try {
       await newChangeCommand(name, options);
+    } catch (error) {
+      console.log();
+      ora().fail(`Error: ${(error as Error).message}`);
+      process.exit(1);
+    }
+  });
+
+// Ralph command for autonomous task execution
+program
+  .command('ralph')
+  .description('Autonomous task execution for ralph-driven workflow')
+  .option('--change <name>', 'Change name to execute')
+  .option('--max-iterations <n>', 'Maximum number of iterations (default: 10)')
+  .option('--model <model>', 'Model to use (provider/model format, e.g., anthropic/claude-sonnet-4-20250514)')
+  .action(async (options: RalphOptions) => {
+    try {
+      await ralphCommand(options);
     } catch (error) {
       console.log();
       ora().fail(`Error: ${(error as Error).message}`);

@@ -33,6 +33,7 @@ function scanInstalledWorkflowArtifacts(
 
     for (const workflowId of ALL_WORKFLOWS) {
       const skillDirName = WORKFLOW_TO_SKILL_DIR[workflowId];
+      if (!skillDirName) continue;
       const skillFile = path.join(skillsDir, skillDirName, 'SKILL.md');
       if (fs.existsSync(skillFile)) {
         installed.add(workflowId);

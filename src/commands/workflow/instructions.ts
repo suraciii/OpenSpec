@@ -20,6 +20,7 @@ import {
   type TaskItem,
   type ApplyInstructions,
 } from './shared.js';
+import { getTaskItemsForChange } from '../../utils/task-progress.js';
 
 // -----------------------------------------------------------------------------
 // Types
@@ -31,10 +32,30 @@ export interface InstructionsOptions {
   json?: boolean;
 }
 
-export interface ApplyInstructionsOptions {
-  change?: string;
-  schema?: string;
-  json?: boolean;
+export type ApplyInstructionsOptions = InstructionsOptions;
+export type RalphInstructionsOptions = InstructionsOptions;
+
+export interface RalphTask {
+  id: string;
+  title: string;
+  description: string;
+  acceptanceCriteria: string[];
+  priority: number;
+  done: boolean;
+  spec?: string;
+}
+
+export interface RalphInstructions {
+  changeName: string;
+  schemaName: string;
+  contextFiles: Record<string, string>;
+  tasks: RalphTask[];
+  progress: {
+    total: number;
+    completed: number;
+    remaining: number;
+  };
+  instruction: string;
 }
 
 // -----------------------------------------------------------------------------
@@ -207,36 +228,6 @@ export function printInstructionsText(instructions: ArtifactInstructions, isBloc
   console.log('</artifact>');
 }
 
-// -----------------------------------------------------------------------------
-// Apply Instructions Command
-// -----------------------------------------------------------------------------
-
-/**
- * Parses tasks.md content and extracts task items with their completion status.
- */
-function parseTasksFile(content: string): TaskItem[] {
-  const tasks: TaskItem[] = [];
-  const lines = content.split('\n');
-  let taskIndex = 0;
-
-  for (const line of lines) {
-    // Match checkbox patterns: - [ ] or - [x] or - [X]
-    const checkboxMatch = line.match(/^[-*]\s*\[([ xX])\]\s*(.+)\s*$/);
-    if (checkboxMatch) {
-      taskIndex++;
-      const done = checkboxMatch[1].toLowerCase() === 'x';
-      const description = checkboxMatch[2].trim();
-      tasks.push({
-        id: `${taskIndex}`,
-        description,
-        done,
-      });
-    }
-  }
-
-  return tasks;
-}
-
 /**
  * Checks if an artifact output exists in the change directory.
  * Supports glob patterns (e.g., "specs/*.md") by verifying at least one matching file exists.
@@ -347,8 +338,9 @@ export async function generateApplyInstructions(
     const tracksPath = path.join(changeDir, tracksFile);
     tracksFileExists = fs.existsSync(tracksPath);
     if (tracksFileExists) {
-      const tasksContent = await fs.promises.readFile(tracksPath, 'utf-8');
-      tasks = parseTasksFile(tasksContent);
+      // Use unified parser that supports both markdown and JSON formats
+      const changesDir = path.join(projectRoot, 'openspec', 'changes');
+      tasks = await getTaskItemsForChange(changesDir, changeName, tracksFile);
     }
   }
 
@@ -476,6 +468,205 @@ export function printApplyInstructionsText(instructions: ApplyInstructions): voi
   }
 
   // Instruction
+  console.log('### Instruction');
+  console.log(instruction);
+}
+
+// -----------------------------------------------------------------------------
+// Ralph Instructions Command
+// -----------------------------------------------------------------------------
+
+function parsePrdForRalph(content: string): RalphTask[] {
+  try {
+    const prd = JSON.parse(content);
+    if (!prd.tasks || !Array.isArray(prd.tasks)) {
+      return [];
+    }
+
+    return prd.tasks.map((task: any) => ({
+      id: task.id || '',
+      title: task.title || '',
+      description: task.description || '',
+      acceptanceCriteria: task.acceptanceCriteria || [],
+      priority: task.priority ?? 999,
+      done: task.passes === true,
+      spec: task.spec,
+    }));
+  } catch {
+    return [];
+  }
+}
+
+export async function generateRalphInstructions(
+  projectRoot: string,
+  changeName: string
+): Promise<RalphInstructions> {
+  const context = loadChangeContext(projectRoot, changeName);
+
+  if (context.schemaName !== 'ralph-driven') {
+    throw new Error(
+      `Change uses ${context.schemaName} schema. Ralph instructions are only available for ralph-driven schema.`
+    );
+  }
+
+  const changeDir = path.join(projectRoot, 'openspec', 'changes', changeName);
+  const prdPath = path.join(changeDir, 'prd.json');
+
+  if (!fs.existsSync(prdPath)) {
+    throw new Error(`prd.json not found at ${prdPath}. Generate it first via /opsx-propose.`);
+  }
+
+  const prdContent = fs.readFileSync(prdPath, 'utf-8');
+  const allTasks = parsePrdForRalph(prdContent);
+
+  // Filter to only pending tasks
+  const pendingTasks = allTasks.filter((t) => !t.done);
+  const completedTasks = allTasks.filter((t) => t.done);
+  
+  const total = allTasks.length;
+  const completed = completedTasks.length;
+  const remaining = pendingTasks.length;
+
+  // Sort pending tasks by priority and find next task
+  const sortedPending = [...pendingTasks].sort((a, b) => a.priority - b.priority);
+  const nextTask = sortedPending[0];
+
+  // If no pending tasks, return COMPLETE immediately
+  if (!nextTask) {
+    return {
+      changeName,
+      schemaName: context.schemaName,
+      contextFiles: {},
+      tasks: [],
+      progress: { total, completed, remaining: 0 },
+      instruction: '<promise>COMPLETE</promise>',
+    };
+  }
+
+  const schema = resolveSchema(context.schemaName, projectRoot);
+
+  const contextFiles: Record<string, string> = {};
+  for (const artifact of schema.artifacts) {
+    if (artifactOutputExists(changeDir, artifact.generates)) {
+      contextFiles[artifact.id] = path.join(changeDir, artifact.generates);
+    }
+  }
+
+  // Build context files list for instruction
+  const contextFilesList = Object.entries(contextFiles)
+    .map(([key, path]) => `  - ${key}: ${path}`)
+    .join('\n');
+
+  const instruction = `You are executing one Ralph iteration for change "${changeName}".
+
+## Context Files
+Read ALL of these files before starting:
+${contextFilesList || '  - prd.json (contains task definitions)'}
+
+## Progress
+${completed}/${total} tasks complete
+
+## Suggested Next Task
+Based on priority order (${nextTask.priority}), the next task should be:
+- ID: ${nextTask.id}
+- Priority: ${nextTask.priority}
+- Title: ${nextTask.title}
+
+## Task Description
+${nextTask.description}
+
+## Acceptance Criteria
+${nextTask.acceptanceCriteria.map(ac => `- ${ac}`).join('\n') || 'See spec file for acceptance criteria'}
+
+**CRITICAL VERIFICATION STEP**: Before implementing, you MUST:
+1. Read prd.json directly from disk
+2. Verify that task "${nextTask.id}" has passes: false (or undefined)
+3. If passes: true, find the actual next pending task with the lowest priority
+4. Implement the verified task, not necessarily the one suggested above
+
+## Steps
+1. Read all context files listed above
+2. Verify the selected task status in prd.json (see CRITICAL VERIFICATION above)
+3. Implement the verified pending task following its acceptance criteria
+4. Run typecheck/tests to verify implementation
+5. Update prd.json: set passes: true for the completed task
+6. Append to progress.txt with timestamp, task ID, what was done, and any learnings
+7. Run: git add -A && git commit -m "ralph(${changeName}): ${nextTask.id} ${nextTask.title}"
+8. If all tasks in prd.json now have passes: true, output: <promise>COMPLETE</promise>
+
+## Guidelines
+- Focus on ONE task only
+- Make minimal, focused changes
+- Keep changes focused on the task description
+- Always verify task status in prd.json before starting implementation`;
+
+  return {
+    changeName,
+    schemaName: context.schemaName,
+    contextFiles,
+    tasks: sortedPending, // Only return pending tasks, sorted by priority
+    progress: { total, completed, remaining },
+    instruction,
+  };
+}
+
+export async function ralphInstructionsCommand(options: RalphInstructionsOptions): Promise<void> {
+  const spinner = ora('Generating Ralph instructions...').start();
+
+  try {
+    const projectRoot = process.cwd();
+    const changeName = await validateChangeExists(options.change, projectRoot);
+
+    const instructions = await generateRalphInstructions(projectRoot, changeName);
+
+    spinner.stop();
+
+    if (options.json) {
+      console.log(JSON.stringify(instructions, null, 2));
+      return;
+    }
+
+    printRalphInstructionsText(instructions);
+  } catch (error) {
+    spinner.stop();
+    throw error;
+  }
+}
+
+export function printRalphInstructionsText(instructions: RalphInstructions): void {
+  const { changeName, schemaName, contextFiles, tasks, progress, instruction } = instructions;
+
+  console.log(`## Ralph: ${changeName}`);
+  console.log(`Schema: ${schemaName}`);
+  console.log();
+
+  const contextFileEntries = Object.entries(contextFiles);
+  if (contextFileEntries.length > 0) {
+    console.log('### Context Files');
+    for (const [artifactId, filePath] of contextFileEntries) {
+      console.log(`- ${artifactId}: ${filePath}`);
+    }
+    console.log();
+  }
+
+  console.log('### Progress');
+  if (progress.remaining === 0) {
+    console.log(`${progress.completed}/${progress.total} complete ✓`);
+  } else {
+    console.log(`${progress.completed}/${progress.total} complete`);
+  }
+  console.log();
+
+  if (tasks.length > 0) {
+    console.log('### Tasks');
+    const sortedTasks = [...tasks].sort((a, b) => a.priority - b.priority);
+    for (const task of sortedTasks) {
+      const status = task.done ? '[x]' : '[ ]';
+      console.log(`- ${status} ${task.id}: ${task.title} (priority: ${task.priority})`);
+    }
+    console.log();
+  }
+
   console.log('### Instruction');
   console.log(instruction);
 }

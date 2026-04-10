@@ -47,6 +47,7 @@ import {
   scanInstalledWorkflows as scanInstalledWorkflowsShared,
   migrateIfNeeded as migrateIfNeededShared,
 } from './migration.js';
+import { readProjectConfig } from './project-config.js';
 
 const require = createRequire(import.meta.url);
 const { version: OPENSPEC_VERSION } = require('../../package.json');
@@ -167,8 +168,10 @@ export class UpdateCommand {
     console.log();
 
     // 9. Determine what to generate based on delivery
-    const skillTemplates = shouldGenerateSkills ? getSkillTemplates(desiredWorkflows) : [];
-    const commandContents = shouldGenerateCommands ? getCommandContents(desiredWorkflows) : [];
+    const projectConfig = readProjectConfig(resolvedProjectPath);
+    const schemaToUse = projectConfig?.schema ?? 'spec-driven';
+    const skillTemplates = shouldGenerateSkills ? getSkillTemplates(desiredWorkflows, schemaToUse) : [];
+    const commandContents = shouldGenerateCommands ? getCommandContents(desiredWorkflows, schemaToUse) : [];
 
     // 10. Update tools (all if force, otherwise only those needing update)
     const toolsToUpdate = this.force ? configuredTools : [...toolsToUpdateSet];
@@ -647,8 +650,10 @@ export class UpdateCommand {
     const newlyConfigured: string[] = [];
     const shouldGenerateSkills = delivery !== 'commands';
     const shouldGenerateCommands = delivery !== 'skills';
-    const skillTemplates = shouldGenerateSkills ? getSkillTemplates(desiredWorkflows) : [];
-    const commandContents = shouldGenerateCommands ? getCommandContents(desiredWorkflows) : [];
+    const projectConfig = readProjectConfig(projectPath);
+    const schemaToUse = projectConfig?.schema ?? 'spec-driven';
+    const skillTemplates = shouldGenerateSkills ? getSkillTemplates(desiredWorkflows, schemaToUse) : [];
+    const commandContents = shouldGenerateCommands ? getCommandContents(desiredWorkflows, schemaToUse) : [];
 
     for (const toolId of selectedTools) {
       const tool = AI_TOOLS.find((t) => t.value === toolId);

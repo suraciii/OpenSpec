@@ -6,18 +6,25 @@
  */
 import type { SkillTemplate, CommandTemplate } from '../types.js';
 
-export function getOpsxProposeSkillTemplate(): SkillTemplate {
+export function getOpsxProposeSkillTemplate(schema?: string): SkillTemplate {
+  const isRalphDriven = schema === 'ralph-driven';
+  const taskArtifact = isRalphDriven ? 'prd.json' : 'tasks.md';
+  const taskArtifactLabel = isRalphDriven ? 'prd.json' : 'tasks';
+  const taskDescription = isRalphDriven ? 'structured task definitions' : 'implementation steps';
+  const nextCommand = isRalphDriven ? 'run `openspec ralph --change <name>`' : 'run /opsx:apply';
+  const applyRequires = isRalphDriven ? '["prd"]' : '["tasks"]';
+
   return {
     name: 'openspec-propose',
-    description: 'Propose a new change with all artifacts generated in one step. Use when the user wants to quickly describe what they want to build and get a complete proposal with design, specs, and tasks ready for implementation.',
+    description: `Propose a new change with all artifacts generated in one step. Use when the user wants to quickly describe what they want to build and get a complete proposal with design, specs, and ${taskArtifactLabel} ready for implementation.`,
     instructions: `Propose a new change - create the change and generate all artifacts in one step.
 
 I'll create a change with artifacts:
 - proposal.md (what & why)
 - design.md (how)
-- tasks.md (implementation steps)
+- ${taskArtifact} (${taskDescription})
 
-When ready to implement, run /opsx:apply
+When ready to implement, ${nextCommand}
 
 ---
 
@@ -45,7 +52,7 @@ When ready to implement, run /opsx:apply
    openspec status --change "<name>" --json
    \`\`\`
    Parse the JSON to get:
-   - \`applyRequires\`: array of artifact IDs needed before implementation (e.g., \`["tasks"]\`)
+   - \`applyRequires\`: array of artifact IDs needed before implementation (e.g., \`${applyRequires}\`)
    - \`artifacts\`: list of all artifacts with their status and dependencies
 
 4. **Create artifacts in sequence until apply-ready**
@@ -91,7 +98,7 @@ After completing all artifacts, summarize:
 - Change name and location
 - List of artifacts created with brief descriptions
 - What's ready: "All artifacts created! Ready for implementation."
-- Prompt: "Run \`/opsx:apply\` or ask me to implement to start working on the tasks."
+- Prompt: "Run \`${isRalphDriven ? 'openspec ralph --change <name>' : '/opsx:apply'}\` or ask me to implement to start working on the tasks."
 
 **Artifact Creation Guidelines**
 
@@ -115,7 +122,13 @@ After completing all artifacts, summarize:
   };
 }
 
-export function getOpsxProposeCommandTemplate(): CommandTemplate {
+export function getOpsxProposeCommandTemplate(schema?: string): CommandTemplate {
+  const isRalphDriven = schema === 'ralph-driven';
+  const taskArtifact = isRalphDriven ? 'prd.json' : 'tasks.md';
+  const taskDescription = isRalphDriven ? 'structured task definitions' : 'implementation steps';
+  const nextCommand = isRalphDriven ? 'run `openspec ralph --change <name>`' : 'run /opsx:apply';
+  const applyRequires = isRalphDriven ? '["prd"]' : '["tasks"]';
+
   return {
     name: 'OPSX: Propose',
     description: 'Propose a new change - create it and generate all artifacts in one step',
@@ -126,9 +139,9 @@ export function getOpsxProposeCommandTemplate(): CommandTemplate {
 I'll create a change with artifacts:
 - proposal.md (what & why)
 - design.md (how)
-- tasks.md (implementation steps)
+- ${taskArtifact} (${taskDescription})
 
-When ready to implement, run /opsx:apply
+When ready to implement, ${nextCommand}
 
 ---
 
@@ -156,7 +169,7 @@ When ready to implement, run /opsx:apply
    openspec status --change "<name>" --json
    \`\`\`
    Parse the JSON to get:
-   - \`applyRequires\`: array of artifact IDs needed before implementation (e.g., \`["tasks"]\`)
+   - \`applyRequires\`: array of artifact IDs needed before implementation (e.g., \`${applyRequires}\`)
    - \`artifacts\`: list of all artifacts with their status and dependencies
 
 4. **Create artifacts in sequence until apply-ready**
@@ -202,7 +215,7 @@ After completing all artifacts, summarize:
 - Change name and location
 - List of artifacts created with brief descriptions
 - What's ready: "All artifacts created! Ready for implementation."
-- Prompt: "Run \`/opsx:apply\` to start implementing."
+- Prompt: "Run \`${isRalphDriven ? 'openspec ralph --change <name>' : '/opsx:apply'}\` to start implementing."
 
 **Artifact Creation Guidelines**
 

@@ -45,6 +45,7 @@ import { getGlobalConfig, type Delivery, type Profile } from './global-config.js
 import { getProfileWorkflows, CORE_WORKFLOWS, ALL_WORKFLOWS } from './profiles.js';
 import { getAvailableTools } from './available-tools.js';
 import { migrateIfNeeded } from './migration.js';
+import { resolveSchema } from './artifact-graph/resolver.js';
 
 const require = createRequire(import.meta.url);
 const { version: OPENSPEC_VERSION } = require('../../package.json');
@@ -83,6 +84,7 @@ type InitCommandOptions = {
   force?: boolean;
   interactive?: boolean;
   profile?: string;
+  schema?: string;
 };
 
 // -----------------------------------------------------------------------------
@@ -94,12 +96,14 @@ export class InitCommand {
   private readonly force: boolean;
   private readonly interactiveOption?: boolean;
   private readonly profileOverride?: string;
+  private readonly schemaOverride?: string;
 
   constructor(options: InitCommandOptions = {}) {
     this.toolsArg = options.tools;
     this.force = options.force ?? false;
     this.interactiveOption = options.interactive;
     this.profileOverride = options.profile;
+    this.schemaOverride = options.schema;
   }
 
   async execute(targetPath: string): Promise<void> {
@@ -501,6 +505,7 @@ export class InitCommand {
     commandsSkipped: string[];
     removedCommandCount: number;
     removedSkillCount: number;
+    workflows: readonly string[];
   }> {
     const createdTools: typeof tools = [];
     const refreshedTools: typeof tools = [];
@@ -513,13 +518,17 @@ export class InitCommand {
     const globalConfig = getGlobalConfig();
     const profile: Profile = this.resolveProfileOverride() ?? globalConfig.profile ?? 'core';
     const delivery: Delivery = globalConfig.delivery ?? 'both';
-    const workflows = getProfileWorkflows(profile, globalConfig.workflows);
+    const schemaToUse = this.schemaOverride ?? DEFAULT_SCHEMA;
+    
+    // Use schema-defined workflows if available, otherwise fall back to profile
+    const schema = resolveSchema(schemaToUse, projectPath);
+    const workflows = schema.workflows ?? getProfileWorkflows(profile, globalConfig.workflows);
 
     // Get skill and command templates filtered by profile workflows
     const shouldGenerateSkills = delivery !== 'commands';
     const shouldGenerateCommands = delivery !== 'skills';
-    const skillTemplates = shouldGenerateSkills ? getSkillTemplates(workflows) : [];
-    const commandContents = shouldGenerateCommands ? getCommandContents(workflows) : [];
+    const skillTemplates = shouldGenerateSkills ? getSkillTemplates(workflows, schemaToUse) : [];
+    const commandContents = shouldGenerateCommands ? getCommandContents(workflows, schemaToUse) : [];
 
     // Process each tool
     for (const tool of tools) {
@@ -588,6 +597,7 @@ export class InitCommand {
       commandsSkipped,
       removedCommandCount,
       removedSkillCount,
+      workflows,
     };
   }
 
@@ -605,13 +615,15 @@ export class InitCommand {
       return 'exists';
     }
 
-    // In non-interactive mode without --force, skip config creation
-    if (!this.canPromptInteractively() && !this.force) {
+    // In non-interactive mode without --force and without --schema, skip config creation
+    // If --schema is provided, we should create the config even in non-interactive mode
+    if (!this.canPromptInteractively() && !this.force && !this.schemaOverride) {
       return 'skipped';
     }
 
     try {
-      const yamlContent = serializeConfig({ schema: DEFAULT_SCHEMA });
+      const schemaToUse = this.schemaOverride ?? DEFAULT_SCHEMA;
+      const yamlContent = serializeConfig({ schema: schemaToUse });
       await FileSystemUtils.writeFile(configPath, yamlContent);
       return 'created';
     } catch {
@@ -633,6 +645,7 @@ export class InitCommand {
       commandsSkipped: string[];
       removedCommandCount: number;
       removedSkillCount: number;
+      workflows: readonly string[];
     },
     configStatus: 'created' | 'exists' | 'skipped'
   ): void {
@@ -652,9 +665,8 @@ export class InitCommand {
     const successfulTools = [...results.createdTools, ...results.refreshedTools];
     if (successfulTools.length > 0) {
       const globalConfig = getGlobalConfig();
-      const profile: Profile = (this.profileOverride as Profile) ?? globalConfig.profile ?? 'core';
       const delivery: Delivery = globalConfig.delivery ?? 'both';
-      const workflows = getProfileWorkflows(profile, globalConfig.workflows);
+      const workflows = results.workflows;
       const toolDirs = [...new Set(successfulTools.map((t) => t.skillsDir))].join(', ');
       const skillCount = delivery !== 'commands' ? getSkillTemplates(workflows).length : 0;
       const commandCount = delivery !== 'skills' ? getCommandContents(workflows).length : 0;
@@ -684,8 +696,9 @@ export class InitCommand {
     }
 
     // Config status
+    const schemaToUse = this.schemaOverride ?? DEFAULT_SCHEMA;
     if (configStatus === 'created') {
-      console.log(`Config: openspec/config.yaml (schema: ${DEFAULT_SCHEMA})`);
+      console.log(`Config: openspec/config.yaml (schema: ${schemaToUse})`);
     } else if (configStatus === 'exists') {
       // Show actual filename (config.yaml or config.yml)
       const configYaml = path.join(projectPath, OPENSPEC_DIR_NAME, 'config.yaml');
