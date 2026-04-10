@@ -1,0 +1,6 @@
+# Ralph Progress Log
+Started: 2026-04-10T01:49:37.716Z
+
+---
+2026-04-10T01:51:00.000Z | T-001 | Removed getOpsxRalphSkillTemplate() function from ralph.ts and updated getOpsxRalphCommandTemplate() to remove all <promise>COMPLETE</promise> references. Updated top comment to reflect skill->command change. Import changed from { SkillTemplate, CommandTemplate } to just { CommandTemplate }. Full typecheck will pass after T-002 removes the reference from skill-templates.ts.
+Next steps: T-002 - Remove skill template export from skill-templates.ts

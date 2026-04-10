@@ -13,8 +13,8 @@
         "Typecheck passes"
       ],
       "priority": 1,
-      "passes": false,
-      "notes": "Also need to update the comment at the top of the file."
+      "passes": true,
+      "notes": "Removed getOpsxRalphSkillTemplate() and updated command template. Note: Full typecheck depends on T-002 (skill-templates.ts still references removed function)."
     },
     {
       "id": "T-002",
