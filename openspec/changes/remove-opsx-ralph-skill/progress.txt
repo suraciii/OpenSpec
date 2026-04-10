@@ -4,3 +4,7 @@ Started: 2026-04-10T01:49:37.716Z
 ---
 2026-04-10T01:51:00.000Z | T-001 | Removed getOpsxRalphSkillTemplate() function from ralph.ts and updated getOpsxRalphCommandTemplate() to remove all <promise>COMPLETE</promise> references. Updated top comment to reflect skill->command change. Import changed from { SkillTemplate, CommandTemplate } to just { CommandTemplate }. Full typecheck will pass after T-002 removes the reference from skill-templates.ts.
 Next steps: T-002 - Remove skill template export from skill-templates.ts
+
+---
+2026-04-10T02:00:00.000Z | T-002 | Removed getOpsxRalphSkillTemplate from export in skill-templates.ts, kept getOpsxRalphCommandTemplate. Typecheck shows error in skill-generation.ts (reference to removed export) - this is T-003's responsibility.
+Next steps: T-003 - Remove reference from skill-generation.ts
