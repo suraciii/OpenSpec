@@ -16,7 +16,6 @@ import {
   getVerifyChangeSkillTemplate,
   getOnboardSkillTemplate,
   getOpsxProposeSkillTemplate,
-  getOpsxRalphSkillTemplate,
   getOpsxExploreCommandTemplate,
   getOpsxNewCommandTemplate,
   getOpsxContinueCommandTemplate,
@@ -68,7 +67,6 @@ export function getSkillTemplates(workflowFilter?: readonly string[], schema?: s
     { template: getVerifyChangeSkillTemplate(), dirName: 'openspec-verify-change', workflowId: 'verify' },
     { template: getOnboardSkillTemplate(), dirName: 'openspec-onboard', workflowId: 'onboard' },
     { template: getOpsxProposeSkillTemplate(schema), dirName: 'openspec-propose', workflowId: 'propose' },
-    { template: getOpsxRalphSkillTemplate(), dirName: 'opsx-ralph', workflowId: 'ralph' },
   ];
 
   if (!workflowFilter) return all;

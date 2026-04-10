@@ -40,8 +40,8 @@
         "Typecheck passes"
       ],
       "priority": 3,
-      "passes": false,
-      "notes": "This is the critical change that controls what init generates."
+      "passes": true,
+      "notes": "Removed getOpsxRalphSkillTemplate import and entry from getSkillTemplates()."
     },
     {
       "id": "T-004",
