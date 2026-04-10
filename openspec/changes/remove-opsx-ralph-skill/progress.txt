@@ -12,3 +12,8 @@ Next steps: T-003 - Remove reference from skill-generation.ts
 ---
 2026-04-10T02:05:30.000Z | T-003 | Removed getOpsxRalphSkillTemplate import and the { template: getOpsxRalphSkillTemplate(), dirName: 'opsx-ralph', workflowId: 'ralph' } entry from getSkillTemplates() in skill-generation.ts. Kept getOpsxRalphCommandTemplate import and command entry. TypeScript compiles without errors.
 Next steps: T-004 - Remove 'ralph': 'opsx-ralph' from WORKFLOW_TO_SKILL_DIR in init.ts and profile-sync-drift.ts
+
+---
+2026-04-10T02:10:00.000Z | T-004 | Removed 'ralph': 'opsx-ralph' mapping from WORKFLOW_TO_SKILL_DIR in init.ts and profile-sync-drift.ts. Required type change from Record<WorkflowId, string> to Partial<Record<WorkflowId, string>> to allow missing keys, plus null checks in migration.ts and profile-sync-drift.ts. Build passes.
+Learnings: When removing a key from a typed Record, may need to make the type Partial and add null guards where the value is used.
+Next steps: T-005 - Remove .opencode/skills/opsx-ralph/SKILL.md from repo

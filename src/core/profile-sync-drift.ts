@@ -11,7 +11,7 @@ type WorkflowId = (typeof ALL_WORKFLOWS)[number];
 /**
  * Maps workflow IDs to their skill directory names.
  */
-export const WORKFLOW_TO_SKILL_DIR: Record<WorkflowId, string> = {
+export const WORKFLOW_TO_SKILL_DIR: Partial<Record<WorkflowId, string>> = {
   'explore': 'openspec-explore',
   'new': 'openspec-new-change',
   'continue': 'openspec-continue-change',
@@ -23,7 +23,6 @@ export const WORKFLOW_TO_SKILL_DIR: Record<WorkflowId, string> = {
   'verify': 'openspec-verify-change',
   'onboard': 'openspec-onboard',
   'propose': 'openspec-propose',
-  'ralph': 'opsx-ralph',
 };
 
 function toKnownWorkflows(workflows: readonly string[]): WorkflowId[] {
@@ -105,6 +104,7 @@ export function hasToolProfileOrDeliveryDrift(
   if (shouldGenerateSkills) {
     for (const workflow of knownDesiredWorkflows) {
       const dirName = WORKFLOW_TO_SKILL_DIR[workflow];
+      if (!dirName) continue;
       const skillFile = path.join(skillsDir, dirName, 'SKILL.md');
       if (!fs.existsSync(skillFile)) {
         return true;
@@ -115,6 +115,7 @@ export function hasToolProfileOrDeliveryDrift(
     for (const workflow of ALL_WORKFLOWS) {
       if (desiredWorkflowSet.has(workflow)) continue;
       const dirName = WORKFLOW_TO_SKILL_DIR[workflow];
+      if (!dirName) continue;
       const skillDir = path.join(skillsDir, dirName);
       if (fs.existsSync(skillDir)) {
         return true;
@@ -123,6 +124,7 @@ export function hasToolProfileOrDeliveryDrift(
   } else {
     for (const workflow of ALL_WORKFLOWS) {
       const dirName = WORKFLOW_TO_SKILL_DIR[workflow];
+      if (!dirName) continue;
       const skillDir = path.join(skillsDir, dirName);
       if (fs.existsSync(skillDir)) {
         return true;
@@ -190,6 +192,7 @@ function getInstalledWorkflowsForTool(
   if (options.includeSkills) {
     for (const workflow of ALL_WORKFLOWS) {
       const dirName = WORKFLOW_TO_SKILL_DIR[workflow];
+      if (!dirName) continue;
       const skillFile = path.join(skillsDir, dirName, 'SKILL.md');
       if (fs.existsSync(skillFile)) {
         installed.add(workflow);

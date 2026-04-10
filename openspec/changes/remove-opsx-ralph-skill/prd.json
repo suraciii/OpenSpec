@@ -54,8 +54,8 @@
         "Typecheck passes"
       ],
       "priority": 4,
-      "passes": false,
-      "notes": "These mappings drive generation and drift detection."
+      "passes": true,
+      "notes": "Removed 'ralph' mapping. Changed type to Partial<Record<WorkflowId, string>> and added null checks for migration.ts and profile-sync-drift.ts."
     },
     {
       "id": "T-005",
