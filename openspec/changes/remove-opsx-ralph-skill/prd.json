@@ -1,0 +1,87 @@
+{
+  "project": "OpenSpec",
+  "description": "Remove opsx-ralph skill generation while preserving the command template for manual debugging",
+  "tasks": [
+    {
+      "id": "T-001",
+      "title": "Remove skill template and update command template",
+      "spec": "specs/skill-cleanup/spec.md#REQ-001",
+      "description": "Update src/core/templates/workflows/ralph.ts to remove getOpsxRalphSkillTemplate() and update getOpsxRalphCommandTemplate() to remove promise references.",
+      "acceptanceCriteria": [
+        "getOpsxRalphSkillTemplate() function removed from ralph.ts",
+        "getOpsxRalphCommandTemplate() no longer contains <promise>COMPLETE</promise>",
+        "Typecheck passes"
+      ],
+      "priority": 1,
+      "passes": false,
+      "notes": "Also need to update the comment at the top of the file."
+    },
+    {
+      "id": "T-002",
+      "title": "Remove skill from skill-templates export",
+      "spec": "specs/skill-cleanup/spec.md#REQ-001",
+      "description": "Remove getOpsxRalphSkillTemplate export from src/core/templates/skill-templates.ts.",
+      "acceptanceCriteria": [
+        "getOpsxRalphSkillTemplate no longer exported",
+        "Typecheck passes"
+      ],
+      "priority": 2,
+      "passes": false,
+      "notes": "Keep getOpsxRalphCommandTemplate export."
+    },
+    {
+      "id": "T-003",
+      "title": "Remove skill from skill-generation registry",
+      "spec": "specs/skill-cleanup/spec.md#REQ-001",
+      "description": "Update src/core/shared/skill-generation.ts to remove opsx-ralph from getSkillTemplates() but keep it in getCommandTemplates().",
+      "acceptanceCriteria": [
+        "getSkillTemplates() does not include opsx-ralph entry",
+        "getCommandTemplates() still includes ralph entry",
+        "Typecheck passes"
+      ],
+      "priority": 3,
+      "passes": false,
+      "notes": "This is the critical change that controls what init generates."
+    },
+    {
+      "id": "T-004",
+      "title": "Remove ralph skill mapping from init and profile-sync-drift",
+      "spec": "specs/skill-cleanup/spec.md#REQ-002",
+      "description": "Remove 'ralph': 'opsx-ralph' from WORKFLOW_TO_SKILL_DIR in src/core/init.ts and src/core/profile-sync-drift.ts.",
+      "acceptanceCriteria": [
+        "WORKFLOW_TO_SKILL_DIR in init.ts has no 'ralph' key",
+        "WORKFLOW_TO_SKILL_DIR in profile-sync-drift.ts has no 'ralph' key",
+        "Typecheck passes"
+      ],
+      "priority": 4,
+      "passes": false,
+      "notes": "These mappings drive generation and drift detection."
+    },
+    {
+      "id": "T-005",
+      "title": "Remove existing skill file from repo",
+      "spec": "specs/skill-cleanup/spec.md#REQ-005",
+      "description": "Delete .opencode/skills/opsx-ralph/SKILL.md from the repository.",
+      "acceptanceCriteria": [
+        ".opencode/skills/opsx-ralph/SKILL.md no longer exists in repo"
+      ],
+      "priority": 5,
+      "passes": false,
+      "notes": "This is the repo's own skill file, not a template."
+    },
+    {
+      "id": "T-006",
+      "title": "Update tests to reflect skill removal",
+      "spec": "specs/skill-cleanup/spec.md#REQ-006",
+      "description": "Update test/core/init.test.ts, test/cli-e2e/ralph-schema.test.ts, and any other tests that assert opsx-ralph skill presence.",
+      "acceptanceCriteria": [
+        "Tests do not assert opsx-ralph skill generation",
+        "Tests still assert opsx-ralph command generation if applicable",
+        "All tests pass"
+      ],
+      "priority": 6,
+      "passes": false,
+      "notes": "Check test/core/profile-sync-drift.test.ts too."
+    }
+  ]
+}
